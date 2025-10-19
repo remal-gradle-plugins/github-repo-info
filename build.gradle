@@ -7,6 +7,7 @@ buildscript {
     dependencies {
         //classpath("$rootGroupId:$rootArtifactId:$rootSnapshotVersion") { version { strictly(rootSnapshotVersion) } }
         classpath 'name.remal.gradle-plugins.toolkit:build-logic:0.75.5'
+        classpath "com.google.code.gson:gson:2.13.2"
     }
     repositories {
         mavenCentral()
