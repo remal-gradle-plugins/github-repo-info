@@ -1,4 +1,7 @@
-import com.google.common.base.CaseFormat
+import static com.google.common.base.CaseFormat.LOWER_HYPHEN
+import static com.google.common.base.CaseFormat.LOWER_UNDERSCORE
+import static com.google.common.base.CaseFormat.UPPER_CAMEL
+
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import groovy.json.JsonSlurper
@@ -54,7 +57,7 @@ generateSources.forMainSourceSet.java { task ->
     onlyIf {
         Closure<String> schemaIdToClassSimpleName = { String schemaId ->
             schemaId = schemaId.replace('.', '-')
-            return 'GitHub' + CaseFormat.LOWER_HYPHEN.to(CaseFormat.UPPER_CAMEL, schemaId)
+            return 'GitHub' + LOWER_HYPHEN.to(UPPER_CAMEL, schemaId)
         }
 
 
@@ -132,13 +135,17 @@ generateSources.forMainSourceSet.java { task ->
                     String elementType = getPropertyJavaType(property, info.items, true)
                     type = "List<$elementType>"
                 } else if (info.type == 'object') {
-                    String refSchemaId = "${schemaId}.${CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_HYPHEN, property)}"
+                    info.description = info.description ?: "Value of {@link ${schemaIdToClassSimpleName(schemaId)}#get${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}()} property."
+                    String refSchemaId = "${schemaId}.${LOWER_UNDERSCORE.to(LOWER_HYPHEN, property)}"
                     processSchema(refSchemaId, info)
                     type = schemaIdToClassSimpleName(refSchemaId)
                 }
                 assert type != null: "Unsupported type '${info.type}' for property '${property}': $info"
 
-                if (!isRequired && !type.contains('<') && type != 'boolean') {
+                if (!isRequired
+                    && !type.contains('<')
+                //&& type != 'boolean'
+                ) {
                     type = primitiveToBoxedType.getOrDefault(type, type)
                     type = "Optional<${type}>"
                 }
@@ -155,9 +162,6 @@ generateSources.forMainSourceSet.java { task ->
             task.classFile(baseJavaPackage.get(), schemaIdToClassSimpleName(schemaId)) {
                 addImport("org.immutables.value.Value")
                 addImport("org.immutables.gson.Gson")
-                addImport("java.util.Optional")
-                addImport(List)
-                addImport(Instant)
                 addImport(Serializable)
 
                 line("/**")
@@ -167,9 +171,19 @@ generateSources.forMainSourceSet.java { task ->
                 line(" */")
                 line("@Value.Immutable")
                 line("@Gson.TypeAdapters")
-                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma")
+                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "JavadocLinkAsPlainText")
                 block("public interface ${simpleName} extends Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
+                        if (javaType =~ /\bOptional\b/) {
+                            addImport("java.util.Optional")
+                        }
+                        if (javaType =~ /\bList\b/) {
+                            addImport(List)
+                        }
+                        if (javaType =~ /\bInstant\b/) {
+                            addImport(Instant)
+                        }
+
                         line("")
 
                         line("/**")
@@ -190,7 +204,7 @@ generateSources.forMainSourceSet.java { task ->
                         }
                         line(" */")
 
-                        line("$javaType ${javaType == 'boolean' ? 'is' : 'get'}${CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, property)}();")
+                        line("$javaType ${javaType == 'boolean' ? 'is' : 'get'}${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}();")
                     }
                 }
             }
