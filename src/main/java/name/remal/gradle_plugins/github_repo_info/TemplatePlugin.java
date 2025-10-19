@@ -1,4 +1,4 @@
-package name.remal.gradle_plugins.template;
+package name.remal.gradle_plugins.github_repo_info;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
