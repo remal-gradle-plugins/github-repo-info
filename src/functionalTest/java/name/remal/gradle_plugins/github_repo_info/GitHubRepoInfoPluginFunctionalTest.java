@@ -11,7 +11,7 @@ class GitHubRepoInfoPluginFunctionalTest {
 
     @Test
     void helpTaskWorks() {
-        project.getBuildFile().applyPlugin("name.remal.template-plugin");
+        project.getBuildFile().applyPlugin("name.remal.github-repo-info");
         project.assertBuildSuccessfully("help");
     }
 
