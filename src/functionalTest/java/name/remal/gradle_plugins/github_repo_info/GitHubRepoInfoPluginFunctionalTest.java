@@ -5,7 +5,7 @@ import name.remal.gradle_plugins.toolkit.testkit.functional.GradleProject;
 import org.junit.jupiter.api.Test;
 
 @RequiredArgsConstructor
-class TemplatePluginFunctionalTest {
+class GitHubRepoInfoPluginFunctionalTest {
 
     final GradleProject project;
 

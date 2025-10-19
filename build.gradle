@@ -26,6 +26,9 @@ apply plugin: 'name.remal.toolkit.build-logic'
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 apply plugin: 'java-gradle-plugin'
+apply plugin: 'name.remal.generate-sources'
+
+apply from: 'build-generate-models.gradle'
 
 dependencies {
 }
@@ -34,8 +37,8 @@ gradlePlugin {
     plugins {
         'name.remal.github-repo-info' {
             id = 'name.remal.github-repo-info'
-            implementationClass = 'name.remal.gradle_plugins.github_repo_info.TemplatePlugin'
-            displayName = 'Plugin'
+            implementationClass = 'name.remal.gradle_plugins.github_repo_info.GitHubRepoInfoPlugin'
+            displayName = 'A Gradle plugin for accessing GitHub repository information'
             description = property('repository-description')
         }
     }
