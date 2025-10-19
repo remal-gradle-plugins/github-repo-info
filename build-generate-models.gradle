@@ -1,8 +1,15 @@
+import com.google.common.base.CaseFormat
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import groovy.json.JsonSlurper
+import java.time.Instant
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 buildscript {
     dependencies {
-        classpath "com.google.code.gson:gson:2.13.2"
+        classpath 'com.google.code.gson:gson:2.13.2'
+        classpath 'com.google.guava:guava:33.5.0-jre'
     }
     repositories {
         mavenCentral()
@@ -11,5 +18,198 @@ buildscript {
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-generateSources.forMainSourceSet.java {
+File dependenciesFile = file('.renovate/package.json')
+
+generateSources.forMainSourceSet.java { task ->
+    Property<String> githubRestApiDescriptionSha = objects.property(String).value(provider {
+        Object dependencies = new JsonSlurper().parse(dependenciesFile, 'UTF-8')
+        String githubRestApiDescriptionDependency = dependencies?.dependencies?['github-rest-api-description']
+        assert githubRestApiDescriptionDependency != null
+        String sha = githubRestApiDescriptionDependency.replaceFirst(/^.*#/, '')
+        assert sha.matches(/^[\da-f]+$/)
+        return sha
+    }).with { it.finalizeValueOnRead(); it }
+
+    Property<String> githubRestApiSpecUrl = objects.property(String).value(provider {
+        String sha = githubRestApiDescriptionSha.get()
+        return "https://raw.githubusercontent.com/github/rest-api-description/$sha/descriptions-next/api.github.com/api.github.com.json"
+    }).with { it.finalizeValueOnRead(); it }
+    inputs.property('githubRestApiSpecUrl', githubRestApiSpecUrl)
+
+    Property<Gson> gson = objects.property(Gson).value(provider {
+        return new GsonBuilder()
+            .create()
+    }).with { it.finalizeValueOnRead(); it }
+
+    Property<Object> githubRestApiSpec = objects.property(Object).value(provider {
+        String url = githubRestApiSpecUrl.get()
+        String content = project.loadTextUrlContent(url)
+        return gson.get().fromJson(content, Object)
+    }).with { it.finalizeValueOnRead(); it }
+
+    Property<String> baseJavaPackage = objects.property(String).value(provider {
+        return project.calculateBaseJavaPackage()
+    }).with { it.finalizeValueOnRead(); it }
+
+    onlyIf {
+        Closure<String> schemaIdToClassSimpleName = { String schemaId ->
+            schemaId = schemaId.replace('.', '-')
+            return 'GitHub' + CaseFormat.LOWER_HYPHEN.to(CaseFormat.UPPER_CAMEL, schemaId)
+        }
+
+
+        Closure processSchema
+        Closure processSchemaById
+
+        Set<String> processedSchemas = new LinkedHashSet<>()
+        processSchema = { String schemaId, Map<String, Object> schema ->
+            if (!processedSchemas.add(schemaId)) {
+                return
+            }
+
+            Map<String, Map<String, Object>> properties = schema.properties ?: [:]
+            Set<String> requiredProperties = new LinkedHashSet<>(schema.required?.collect() ?: [])
+
+            Map<String, String> primitiveToBoxedType = [
+                'int': 'Integer',
+                'long': 'Long',
+                'double': 'Double',
+                'float': 'Float',
+                'boolean': 'Boolean',
+                'char': 'Character',
+                'byte': 'Byte',
+                'short': 'Short',
+            ]
+
+            Closure<String> getPropertyJavaType
+            getPropertyJavaType = { String property, Map<String, Object> info, boolean isRequired ->
+                if (info.type instanceof List
+                    && info.type.size() == 2
+                ) {
+                    if (info.type.get(0) == 'null') {
+                        info.type = info.type.get(1)
+                        isRequired = false
+                    } else if (info.type.get(1) == 'null') {
+                        info.type = info.type.get(0)
+                        isRequired = false
+                    }
+                }
+
+                if (info.anyOf instanceof List
+                    && info.anyOf.size() == 2
+                ) {
+                    if (info.anyOf.get(0)['type'] == 'null') {
+                        info = info.anyOf.get(1)
+                        isRequired = false
+                    } else if (info.anyOf.get(1)['type'] == 'null') {
+                        info = info.anyOf.get(0)
+                        isRequired = false
+                    }
+                }
+
+                String type = null
+                if (info['$ref']?.toString()?.startsWith('#/components/schemas/')) {
+                    String refSchemaId = info['$ref'].substring('#/components/schemas/'.length())
+                    processSchemaById(refSchemaId)
+                    type = schemaIdToClassSimpleName(refSchemaId)
+                } else if (info.type == 'string') {
+                    if (info.format == null
+                        || info.format == 'uri'
+                    ) {
+                        type = 'String'
+                    } else if (info.format == 'date-time') {
+                        type = 'Instant'
+                    }
+                } else if (info.type == 'boolean') {
+                    type = 'boolean'
+                } else if (info.type == 'integer') {
+                    if (info.format == null) {
+                        type = 'int'
+                    } else if (info.format == 'int64') {
+                        type = 'long'
+                    }
+                } else if (info.type == 'array') {
+                    String elementType = getPropertyJavaType(property, info.items, true)
+                    type = "List<$elementType>"
+                } else if (info.type == 'object') {
+                    String refSchemaId = "${schemaId}.${CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_HYPHEN, property)}"
+                    processSchema(refSchemaId, info)
+                    type = schemaIdToClassSimpleName(refSchemaId)
+                }
+                assert type != null: "Unsupported type '${info.type}' for property '${property}': $info"
+
+                if (!isRequired && !type.contains('<') && type != 'boolean') {
+                    type = primitiveToBoxedType.getOrDefault(type, type)
+                    type = "Optional<${type}>"
+                }
+
+                return type
+            }
+
+            Map<String, String> propertyToJavaType = [:]
+            properties.forEach { property, info ->
+                boolean isRequired = requiredProperties.contains(property)
+                propertyToJavaType[property] = getPropertyJavaType(property, info, isRequired)
+            }
+
+            task.classFile(baseJavaPackage.get(), schemaIdToClassSimpleName(schemaId)) {
+                addImport("org.immutables.value.Value")
+                addImport("org.immutables.gson.Gson")
+                addImport("java.util.Optional")
+                addImport(List)
+                addImport(Instant)
+                addImport(Serializable)
+
+                line("/**")
+                line(" * ${schema.description ?: ''}")
+                line(" *")
+                line(" * <p>See <a href=\"${githubRestApiSpecUrl.get()}\">GitHub REST API Open API spec</a>.")
+                line(" */")
+                line("@Value.Immutable")
+                line("@Gson.TypeAdapters")
+                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma")
+                block("public interface ${simpleName} extends Serializable") {
+                    propertyToJavaType.forEach { property, javaType ->
+                        line("")
+
+                        line("/**")
+                        line(" * Value of <code>${property}</code> property.")
+                        List<Object> examples = properties[property]?.examples ?: []
+                        if (!examples.isEmpty()) {
+                            line(" *")
+                            line(" * <p>Example${examples.size() == 1 ? '' : 's'}:")
+                            examples.forEach { example ->
+                                if (example instanceof Map
+                                    || example instanceof List
+                                ) {
+                                    example = gson.get().toJson(example)
+                                }
+
+                                line(" * ${examples.size() == 1 ? '' : '<li>'}<pre><code>${example}</code></pre>")
+                            }
+                        }
+                        line(" */")
+
+                        line("$javaType ${javaType == 'boolean' ? 'is' : 'get'}${CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.UPPER_CAMEL, property)}();")
+                    }
+                }
+            }
+        }
+
+        processSchemaById = { String schemaId ->
+            try {
+                Map<String, Object> schema = githubRestApiSpec.get().components?.schemas?[schemaId]
+                assert schema != null
+                processSchema(schemaId, schema)
+
+            } catch (Throwable exception) {
+                throw new GradleException("Failed to load schema '$schemaId' from GitHub REST API description", exception)
+            }
+        }
+
+        processSchemaById('full-repository')
+        processSchemaById('license')
+
+        return true
+    }
 }
