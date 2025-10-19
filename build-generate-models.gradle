@@ -60,6 +60,23 @@ generateSources.forMainSourceSet.java { task ->
             return 'GitHub' + LOWER_HYPHEN.to(UPPER_CAMEL, schemaId)
         }
 
+        Closure<String> normalizeString = { Object content ->
+            String string = content.toString()
+            while (string.startsWith('\n')) {
+                string = string.substring(1)
+            }
+            while (string.endsWith('\n')) {
+                string = string.substring(0, string.length() - 1)
+            }
+            return string
+        }
+
+        Closure<String> formatJavadoc = { Object content ->
+            String string = normalizeString(content)
+            string = string.replace('\n', '\n * <br>')
+            return string
+        }
+
 
         Closure processSchema
         Closure processSchemaById
@@ -86,9 +103,7 @@ generateSources.forMainSourceSet.java { task ->
 
             Closure<String> getPropertyJavaType
             getPropertyJavaType = { String property, Map<String, Object> info, boolean isRequired ->
-                if (info.type instanceof List
-                    && info.type.size() == 2
-                ) {
+                if (info.type instanceof List && info.type.size() == 2) {
                     if (info.type.get(0) == 'null') {
                         info.type = info.type.get(1)
                         isRequired = false
@@ -98,9 +113,7 @@ generateSources.forMainSourceSet.java { task ->
                     }
                 }
 
-                if (info.anyOf instanceof List
-                    && info.anyOf.size() == 2
-                ) {
+                if (info.anyOf instanceof List && info.anyOf.size() == 2) {
                     if (info.anyOf.get(0)['type'] == 'null') {
                         info = info.anyOf.get(1)
                         isRequired = false
@@ -116,9 +129,7 @@ generateSources.forMainSourceSet.java { task ->
                     processSchemaById(refSchemaId)
                     type = schemaIdToClassSimpleName(refSchemaId)
                 } else if (info.type == 'string') {
-                    if (info.format == null
-                        || info.format == 'uri'
-                    ) {
+                    if (info.format == null || info.format == 'uri') {
                         type = 'String'
                     } else if (info.format == 'date-time') {
                         type = 'Instant'
@@ -135,15 +146,18 @@ generateSources.forMainSourceSet.java { task ->
                     String elementType = getPropertyJavaType(property, info.items, true)
                     type = "List<$elementType>"
                 } else if (info.type == 'object') {
-                    info.description = info.description ?: "Value of {@link ${schemaIdToClassSimpleName(schemaId)}#get${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}()} property."
-                    String refSchemaId = "${schemaId}.${LOWER_UNDERSCORE.to(LOWER_HYPHEN, property)}"
-                    processSchema(refSchemaId, info)
-                    type = schemaIdToClassSimpleName(refSchemaId)
+                    if (info.properties != null) {
+                        info.description = info.description ?: "Value of {@link ${schemaIdToClassSimpleName(schemaId)}#get${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}()} property."
+                        String refSchemaId = "${schemaId}.${LOWER_UNDERSCORE.to(LOWER_HYPHEN, property)}"
+                        processSchema(refSchemaId, info)
+                        type = schemaIdToClassSimpleName(refSchemaId)
+                    } else {
+                        type = 'Map<String, Object>'
+                    }
                 }
                 assert type != null: "Unsupported type '${info.type}' for property '${property}': $info"
 
-                if (!isRequired
-                    && !type.contains('<')
+                if (!isRequired && !type.contains('<')
                 //&& type != 'boolean'
                 ) {
                     type = primitiveToBoxedType.getOrDefault(type, type)
@@ -174,30 +188,41 @@ generateSources.forMainSourceSet.java { task ->
                 suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "JavadocLinkAsPlainText")
                 block("public interface ${simpleName} extends Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
+                        if (javaType =~ /\bInstant\b/) {
+                            addImport(Instant)
+                        }
                         if (javaType =~ /\bOptional\b/) {
                             addImport("java.util.Optional")
                         }
                         if (javaType =~ /\bList\b/) {
                             addImport(List)
                         }
-                        if (javaType =~ /\bInstant\b/) {
-                            addImport(Instant)
+                        if (javaType =~ /\bMap\b/) {
+                            addImport(Map)
                         }
 
                         line("")
 
                         line("/**")
-                        line(" * Value of <code>${property}</code> property.")
+                        if (properties[property].description != null) {
+                            line(" * ${formatJavadoc(properties[property].description)}")
+                        } else {
+                            line(" * Value of <code>${property}</code> property.")
+                        }
                         List<Object> examples = properties[property]?.examples ?: []
                         if (!examples.isEmpty()) {
                             line(" *")
                             line(" * <p>Example${examples.size() == 1 ? '' : 's'}:")
                             examples.forEach { example ->
-                                if (example instanceof Map
-                                    || example instanceof List
-                                ) {
+                                if (example instanceof Map || example instanceof List) {
                                     example = gson.get().toJson(example)
                                 }
+
+                                example = normalizeString(example)
+                                if (example.contains('\n')) {
+                                    example = "\n$example\n"
+                                }
+                                example = example.replace('\n', '\n * ')
 
                                 line(" * ${examples.size() == 1 ? '' : '<li>'}<pre><code>${example}</code></pre>")
                             }
