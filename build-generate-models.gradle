@@ -173,21 +173,23 @@ generateSources.forMainSourceSet.java { task ->
                 propertyToJavaType[property] = getPropertyJavaType(property, info, isRequired)
             }
 
-            task.classFile(baseJavaPackage.get(), schemaIdToClassSimpleName(schemaId)) {
+            task.classFile(baseJavaPackage.get() + '.info', schemaIdToClassSimpleName(schemaId)) {
                 addImport("org.immutables.value.Value")
                 addImport("org.immutables.gson.Gson")
                 addImport("name.remal.gradle_plugins.toolkit.annotations.ReliesOnExternalDependency")
                 addImport(Serializable)
 
                 line("/**")
-                line(" * ${schema.description ?: ''}")
-                line(" *")
-                line(" * <p>See <a href=\"${githubRestApiSpecUrl.get()}\">GitHub REST API Open API spec</a>.")
+                if (schema.description != null) {
+                    line(" * ${schema.description ?: ''}")
+                    line(" *")
+                }
+                line(" * ${schema.description != null ? '<p>' : ''}See <a href=\"${githubRestApiSpecUrl.get()}\">GitHub REST API Open API spec</a>.")
                 line(" */")
                 line("@Value.Immutable")
                 line("@Gson.TypeAdapters")
                 line("@ReliesOnExternalDependency")
-                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "checkstyle:JavadocParagraph", "JavadocLinkAsPlainText")
+                suppressWarningsLine("checkstyle:LineLength", "JavadocLinkAsPlainText")
                 block("public interface ${simpleName} extends Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
                         if (javaType =~ /\bInstant\b/) {

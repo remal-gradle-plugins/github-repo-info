@@ -2,7 +2,7 @@ package name.remal.gradle_plugins.github_repository_info;
 
 import org.gradle.api.DefaultTask;
 
-public abstract class AbstractRetrieveGitHubRepositoryTask
+abstract class AbstractRetrieveGitHubRepositoryTask
     extends DefaultTask
     implements GitHubRepositoryInfoSettings {
 

@@ -1,4 +1,4 @@
 package name.remal.gradle_plugins.github_repository_info;
 
-public abstract class GitHubRepositoryInfoExtension {
+public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryInfoSettings {
 }
