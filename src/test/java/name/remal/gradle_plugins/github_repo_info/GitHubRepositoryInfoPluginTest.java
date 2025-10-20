@@ -11,20 +11,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @RequiredArgsConstructor
-class GitHubRepoInfoPluginTest {
+class GitHubRepositoryInfoPluginTest {
 
     final Project project;
 
     @BeforeEach
     void beforeEach() {
-        project.getPluginManager().apply(GitHubRepoInfoPlugin.class);
+        project.getPluginManager().apply(GitHubRepositoryInfoPlugin.class);
     }
 
     @Test
     void pluginTasksDoNotHavePropertyProblems() {
         executeAfterEvaluateActions(project);
 
-        var taskClassNamePrefix = packageNameOf(GitHubRepoInfoPlugin.class) + '.';
+        var taskClassNamePrefix = packageNameOf(GitHubRepositoryInfoPlugin.class) + '.';
         project.getTasks().stream()
             .filter(task -> {
                 var taskClass = unwrapGeneratedSubclass(task.getClass());

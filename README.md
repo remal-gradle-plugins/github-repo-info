@@ -2,16 +2,18 @@
 
 **Tested on Gradle versions from <!--property:gradle-api.min-version-->8.9<!--/property--> to <!--property:gradle-api.max-version-->8.11-rc-1<!--/property-->.**
 
-# `name.remal.github-repo-info` plugin
+# `name.remal.github-repository-info` plugin
 
 [![configuration cache: supported](https://img.shields.io/static/v1?label=configuration%20cache&message=supported&color=success)](https://docs.gradle.org/current/userguide/configuration_cache.html)
 
-<!--plugin-usage:name.remal.github-repo-info-->
+<!--plugin-usage:name.remal.github-repository-info-->
+
 ```groovy
 plugins {
-    id 'name.remal.github-repo-info' version '1-SNAPSHOT'
+  id 'name.remal.github-repository-info' version '0-SNAPSHOT'
 }
 ```
+
 <!--/plugin-usage-->
 
 &nbsp;

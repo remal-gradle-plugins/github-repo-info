@@ -176,6 +176,7 @@ generateSources.forMainSourceSet.java { task ->
             task.classFile(baseJavaPackage.get(), schemaIdToClassSimpleName(schemaId)) {
                 addImport("org.immutables.value.Value")
                 addImport("org.immutables.gson.Gson")
+                addImport("name.remal.gradle_plugins.toolkit.annotations.ReliesOnExternalDependency")
                 addImport(Serializable)
 
                 line("/**")
@@ -185,6 +186,7 @@ generateSources.forMainSourceSet.java { task ->
                 line(" */")
                 line("@Value.Immutable")
                 line("@Gson.TypeAdapters")
+                line("@ReliesOnExternalDependency")
                 suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "checkstyle:JavadocParagraph", "JavadocLinkAsPlainText")
                 block("public interface ${simpleName} extends Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
