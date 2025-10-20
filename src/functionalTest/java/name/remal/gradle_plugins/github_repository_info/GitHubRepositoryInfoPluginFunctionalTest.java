@@ -1,4 +1,4 @@
-package name.remal.gradle_plugins.github_repo_info;
+package name.remal.gradle_plugins.github_repository_info;
 
 import lombok.RequiredArgsConstructor;
 import name.remal.gradle_plugins.toolkit.testkit.functional.GradleProject;

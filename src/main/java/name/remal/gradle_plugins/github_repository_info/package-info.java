@@ -20,7 +20,7 @@
     depluralize = true
 )
 @NullMarked
-package name.remal.gradle_plugins.github_repo_info;
+package name.remal.gradle_plugins.github_repository_info;
 
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;

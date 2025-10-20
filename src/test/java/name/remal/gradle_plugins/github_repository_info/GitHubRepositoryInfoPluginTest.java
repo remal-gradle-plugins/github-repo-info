@@ -1,4 +1,4 @@
-package name.remal.gradle_plugins.github_repo_info;
+package name.remal.gradle_plugins.github_repository_info;
 
 import static name.remal.gradle_plugins.toolkit.reflection.ReflectionUtils.packageNameOf;
 import static name.remal.gradle_plugins.toolkit.reflection.ReflectionUtils.unwrapGeneratedSubclass;
