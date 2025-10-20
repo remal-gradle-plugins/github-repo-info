@@ -33,6 +33,7 @@ apply plugin: 'name.remal.generate-sources'
 apply from: 'build-generate-models.gradle'
 
 dependencies {
+    classesRelocation 'com.google.code.gson:gson:2.13.2'
 }
 
 gradlePlugin {

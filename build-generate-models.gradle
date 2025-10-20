@@ -185,7 +185,7 @@ generateSources.forMainSourceSet.java { task ->
                 line(" */")
                 line("@Value.Immutable")
                 line("@Gson.TypeAdapters")
-                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "JavadocLinkAsPlainText")
+                suppressWarningsLine("checkstyle:LineLength", "checkstyle:RightCurlyAlone", "checkstyle:SeparatorWrapComma", "checkstyle:JavadocParagraph", "JavadocLinkAsPlainText")
                 block("public interface ${simpleName} extends Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
                         if (javaType =~ /\bInstant\b/) {
