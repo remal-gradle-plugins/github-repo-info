@@ -49,7 +49,7 @@ public abstract class GitHubRepositoryInfoPlugin implements Plugin<Project> {
         extension.getDownloader().set(downloader);
 
         project.getTasks().withType(AbstractRetrieveGitHubRepositoryInfoTask.class).configureEach(task -> {
-            copyManagedProperties(extension, task);
+            copyManagedProperties(GitHubRepositoryInfoSettings.class, extension, task);
 
             task.getDownloader().set(downloader);
             task.usesService(downloader);

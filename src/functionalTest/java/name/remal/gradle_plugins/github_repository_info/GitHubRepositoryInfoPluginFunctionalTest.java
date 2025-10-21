@@ -1,5 +1,14 @@
 package name.remal.gradle_plugins.github_repository_info;
 
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryContributorsInfo;
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryInfo;
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryLanguagesInfo;
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryLicenseFileInfo;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.nio.file.Path;
 import lombok.RequiredArgsConstructor;
 import name.remal.gradle_plugins.toolkit.testkit.functional.GradleProject;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,6 +81,77 @@ class GitHubRepositoryInfoPluginFunctionalTest {
             });
 
             project.assertBuildSuccessfully("help");
+        }
+
+    }
+
+
+    @Nested
+    class Tasks {
+
+        final Path outputFile = project.resolveRelativePath("output.json");
+
+        @Test
+        void repository() {
+            project.forBuildFile(build -> {
+                build.addImport(RetrieveGitHubRepositoryInfo.class);
+                build.block("tasks.register('retrieveInfo', RetrieveGitHubRepositoryInfo)", task -> {
+                    task.line("outputJsonFile = file('%s')", task.escapeString(outputFile.toString()));
+                });
+            });
+
+            project.assertBuildSuccessfully("retrieveInfo");
+
+            var repository = deserializerGitHubRepositoryInfo(outputFile);
+            assertEquals("remal-gradle-plugins/github-repository-info", repository.getFullName());
+        }
+
+        @Test
+        void license() {
+            project.forBuildFile(build -> {
+                build.addImport(RetrieveGitHubRepositoryLicenseFileInfo.class);
+                build.block("tasks.register('retrieveInfo', RetrieveGitHubRepositoryLicenseFileInfo)", task -> {
+                    task.line("outputJsonFile = file('%s')", task.escapeString(outputFile.toString()));
+                });
+            });
+
+            project.assertBuildSuccessfully("retrieveInfo");
+
+            var licenseFile = deserializerGitHubRepositoryLicenseFileInfo(outputFile);
+            assertEquals("LICENSE", licenseFile.getPath());
+        }
+
+        @Test
+        void contributors() {
+            project.forBuildFile(build -> {
+                build.addImport(RetrieveGitHubRepositoryContributorsInfo.class);
+                build.block("tasks.register('retrieveInfo', RetrieveGitHubRepositoryContributorsInfo)", task -> {
+                    task.line("outputJsonFile = file('%s')", task.escapeString(outputFile.toString()));
+                });
+            });
+
+            project.assertBuildSuccessfully("retrieveInfo");
+
+            var contributors = deserializerGitHubRepositoryContributorsInfo(outputFile);
+            assertThat(contributors).anyMatch(map -> "remal".equals(map.getLogin()));
+        }
+
+        @Test
+        void languages() {
+            project.forBuildFile(build -> {
+                build.addImport(RetrieveGitHubRepositoryLanguagesInfo.class);
+                build.block("tasks.register('retrieveInfo', RetrieveGitHubRepositoryLanguagesInfo)", task -> {
+                    task.line("outputJsonFile = file('%s')", task.escapeString(outputFile.toString()));
+                });
+            });
+
+            project.assertBuildSuccessfully("retrieveInfo");
+
+            var languages = deserializerGitHubRepositoryLanguagesInfo(outputFile);
+            assertThat(languages)
+                .extractingByKey("Java")
+                .asInstanceOf(INTEGER)
+                .isGreaterThan(0);
         }
 
     }
