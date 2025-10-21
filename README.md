@@ -39,7 +39,7 @@ publishing.publications.withType(MavenPublication).configureEach {
 }
 ```
 
-# Loading data by using `githubRepositoryInfo` extension
+## Loading data by using `githubRepositoryInfo` extension
 
 This plugin creates `githubRepositoryInfo` extension that provides the following
 [read-only](https://docs.gradle.org/current/javadoc/org/gradle/api/provider/HasConfigurableValue.html#disallowChanges())
@@ -52,13 +52,13 @@ This plugin creates `githubRepositoryInfo` extension that provides the following
 
 All these properties load data lazily.
 
-# Configuration
+## Configuration
 
 For public GitHub repositories, the plugin should work without any additional configuration.
 
 However, for private repositories or to increase the rate limits, you need to provide a GitHub token.
 
-## GitHub token configuration for GitHub Actions
+### GitHub token configuration for GitHub Actions
 
 Configure `GITHUB_TOKEN` environment variable for your GitHub Actions job:
 
@@ -71,7 +71,7 @@ Configure `GITHUB_TOKEN` environment variable for your GitHub Actions job:
 
 `GITHUB_ACTIONS_TOKEN` environment variable can be used instead of `GITHUB_TOKEN`.
 
-## GitHub token configuration for local development
+### GitHub token configuration for local development
 
 Add `name.remal.github-repository-info.api.token` property to your `~/.gradle/gradle.properties` file:
 
