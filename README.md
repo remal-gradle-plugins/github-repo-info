@@ -1,6 +1,6 @@
-**Tested on Java LTS versions from <!--property:java-runtime.min-version-->17<!--/property--> to <!--property:java-runtime.max-version-->25<!--/property-->.**
+**Tested on Java LTS versions from <!--property:java-runtime.min-version-->11<!--/property--> to <!--property:java-runtime.max-version-->25<!--/property-->.**
 
-**Tested on Gradle versions from <!--property:gradle-api.min-version-->9.0.0<!--/property--> to <!--property:gradle-api.max-version-->9.2.0-rc-2<!--/property-->.**
+**Tested on Gradle versions from <!--property:gradle-api.min-version-->8.0<!--/property--> to <!--property:gradle-api.max-version-->9.2.0-rc-2<!--/property-->.**
 
 # `name.remal.github-repository-info` plugin
 
@@ -9,7 +9,7 @@
 <!--plugin-usage:name.remal.github-repository-info-->
 ```groovy
 plugins {
-    id 'name.remal.github-repository-info' version '0-SNAPSHOT'
+    id 'name.remal.github-repository-info' version '1-SNAPSHOT'
 }
 ```
 <!--/plugin-usage-->
