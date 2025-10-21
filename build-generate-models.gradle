@@ -19,11 +19,15 @@ buildscript {
     }
 }
 
+class ThisScriptLocation {}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 File dependenciesFile = file('.renovate/package.json')
 
 generateSources.forMainSourceSet.java { task ->
+    task.inputs.dir(getClassLocationFile(ThisScriptLocation)).withNormalizer(ClasspathNormalizer).optional()
+
     Property<String> githubRestApiDescriptionSha = objects.property(String).value(provider {
         Object dependencies = new JsonSlurper().parse(dependenciesFile, 'UTF-8')
         String githubRestApiDescriptionDependency = dependencies?.dependencies?['github-rest-api-description']
@@ -147,7 +151,7 @@ generateSources.forMainSourceSet.java { task ->
                     type = "List<$elementType>"
                 } else if (info.type == 'object') {
                     if (info.properties != null) {
-                        info.description = info.description ?: "Value of {@link ${schemaIdToClassSimpleName(schemaId)}#get${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}()} property."
+                        info.schemaDescription = info.description ?: "Value of {@link ${schemaIdToClassSimpleName(schemaId)}#get${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}()} property."
                         String refSchemaId = "${schemaId}.${LOWER_UNDERSCORE.to(LOWER_HYPHEN, property)}"
                         processSchema(refSchemaId, info)
                         type = schemaIdToClassSimpleName(refSchemaId)
@@ -161,7 +165,7 @@ generateSources.forMainSourceSet.java { task ->
                 //&& type != 'boolean'
                 ) {
                     type = primitiveToBoxedType.getOrDefault(type, type)
-                    type = "Optional<${type}>"
+                    type = "@Nullable ${type}"
                 }
 
                 return type
@@ -180,20 +184,24 @@ generateSources.forMainSourceSet.java { task ->
                 addImport(Serializable)
 
                 line("/**")
-                if (schema.description != null) {
-                    line(" * ${schema.description ?: ''}")
+                String description = schema.schemaDescription ?: schema.description
+                if (description != null) {
+                    line(" * ${description ?: ''}")
                     line(" *")
                 }
-                line(" * ${schema.description != null ? '<p>' : ''}See <a href=\"${githubRestApiSpecUrl.get()}\">GitHub REST API Open API spec</a>.")
+                line(" * ${description != null ? '<p>' : ''}See <a href=\"${githubRestApiSpecUrl.get()}\">GitHub REST API Open API spec</a>.")
                 line(" */")
                 line("@Value.Immutable")
                 line("@Gson.TypeAdapters")
                 line("@ReliesOnExternalDependency")
-                suppressWarningsLine("checkstyle:LineLength", "JavadocLinkAsPlainText")
-                block("public interface ${simpleName} extends Serializable") {
+                suppressWarningsLine("checkstyle:LineLength", "JavadocLinkAsPlainText", "RedundantSuppression")
+                block("public interface ${simpleName} extends GitHubInfoType, Serializable") {
                     propertyToJavaType.forEach { property, javaType ->
                         if (javaType =~ /\bInstant\b/) {
                             addImport(Instant)
+                        }
+                        if (javaType =~ /\bNullable\b/) {
+                            addImport("org.jspecify.annotations.Nullable")
                         }
                         if (javaType =~ /\bOptional\b/) {
                             addImport("java.util.Optional")
@@ -233,6 +241,8 @@ generateSources.forMainSourceSet.java { task ->
                         }
                         line(" */")
 
+                        line("@Gson.Named(\"${escapeString(property)}\")")
+
                         line("$javaType ${javaType == 'boolean' ? 'is' : 'get'}${LOWER_UNDERSCORE.to(UPPER_CAMEL, property)}();")
                     }
                 }
@@ -251,7 +261,8 @@ generateSources.forMainSourceSet.java { task ->
         }
 
         processSchemaById('full-repository')
-        processSchemaById('license')
+        processSchemaById('license-content')
+        processSchemaById('contributor')
 
         return true
     }
