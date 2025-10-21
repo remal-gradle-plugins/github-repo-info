@@ -28,6 +28,7 @@ import org.eclipse.jgit.transport.URIish;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.HasConfigurableValue;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -41,56 +42,64 @@ public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryI
     public abstract Property<GitHubFullRepository> getRepository();
 
     {
-        getRepository().value(getProviders().provider(() ->
-            getDownloader().get().download(
-                getGithubApiUrl().get(),
-                "/repos/" + getRepositoryFullName().get(),
-                getGithubApiToken().getOrNull(),
-                new TypeToken<>() { }
-            )
-        )).finalizeValueOnRead();
+        makePropertyLazyReadOnly(
+            getRepository().value(getProviders().provider(() ->
+                getDownloader().get().download(
+                    getGithubApiUrl().get(),
+                    "/repos/" + getRepositoryFullName().get(),
+                    getGithubApiToken().getOrNull(),
+                    new TypeToken<>() { }
+                )
+            ))
+        );
     }
 
     @Internal
     public abstract Property<GitHubLicenseContent> getLicenseFile();
 
     {
-        getLicenseFile().value(getProviders().provider(() ->
-            getDownloader().get().download(
-                getGithubApiUrl().get(),
-                "/repos/" + getRepositoryFullName().get() + "/license",
-                getGithubApiToken().getOrNull(),
-                new TypeToken<>() { }
-            )
-        )).finalizeValueOnRead();
+        makePropertyLazyReadOnly(
+            getLicenseFile().value(getProviders().provider(() ->
+                getDownloader().get().download(
+                    getGithubApiUrl().get(),
+                    "/repos/" + getRepositoryFullName().get() + "/license",
+                    getGithubApiToken().getOrNull(),
+                    new TypeToken<>() { }
+                )
+            ))
+        );
     }
 
     @Internal
     public abstract ListProperty<GitHubContributor> getContributors();
 
     {
-        getContributors().value(getProviders().provider(() ->
-            getDownloader().get().download(
-                getGithubApiUrl().get(),
-                "/repos/" + getRepositoryFullName().get() + "/contributors",
-                getGithubApiToken().getOrNull(),
-                new TypeToken<List<GitHubContributor>>() { }
-            )
-        )).finalizeValueOnRead();
+        makePropertyLazyReadOnly(
+            getContributors().value(getProviders().provider(() ->
+                getDownloader().get().download(
+                    getGithubApiUrl().get(),
+                    "/repos/" + getRepositoryFullName().get() + "/contributors",
+                    getGithubApiToken().getOrNull(),
+                    new TypeToken<List<GitHubContributor>>() { }
+                )
+            ))
+        );
     }
 
     @Internal
     public abstract MapProperty<String, Integer> getLanguages();
 
     {
-        getLanguages().value(getProviders().provider(() ->
-            getDownloader().get().download(
-                getGithubApiUrl().get(),
-                "/repos/" + getRepositoryFullName().get() + "/languages",
-                getGithubApiToken().getOrNull(),
-                new TypeToken<Map<String, Integer>>() { }
-            )
-        )).finalizeValueOnRead();
+        makePropertyLazyReadOnly(
+            getLanguages().value(getProviders().provider(() ->
+                getDownloader().get().download(
+                    getGithubApiUrl().get(),
+                    "/repos/" + getRepositoryFullName().get() + "/languages",
+                    getGithubApiToken().getOrNull(),
+                    new TypeToken<Map<String, Integer>>() { }
+                )
+            ))
+        );
     }
 
 
@@ -188,5 +197,11 @@ public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryI
 
     @Inject
     protected abstract ObjectFactory getObjects();
+
+
+    private static void makePropertyLazyReadOnly(HasConfigurableValue property) {
+        property.disallowChanges();
+        property.finalizeValueOnRead();
+    }
 
 }
