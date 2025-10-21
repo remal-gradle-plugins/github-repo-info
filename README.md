@@ -54,13 +54,12 @@ All these properties load data lazily.
 
 ## Configuration
 
-For public GitHub repositories, the plugin should work without any additional configuration.
+**For public GitHub repositories, the plugin should work without any additional configuration.**
 
-However, for private repositories or to increase the rate limits, you need to provide a GitHub token.
+However, for **private** repositories or to **increase the rate limits**, you need to provide a GitHub token.
 
-### GitHub token configuration for GitHub Actions
-
-Configure `GITHUB_TOKEN` environment variable for your GitHub Actions job:
+To configure a GitHub token for GitHub Actions,
+set `GITHUB_TOKEN` environment variable for your GitHub Actions job:
 
 ```yaml
 - name: Run Gradle build
@@ -71,9 +70,8 @@ Configure `GITHUB_TOKEN` environment variable for your GitHub Actions job:
 
 `GITHUB_ACTIONS_TOKEN` environment variable can be used instead of `GITHUB_TOKEN`.
 
-### GitHub token configuration for local development
-
-Add `name.remal.github-repository-info.api.token` property to your `~/.gradle/gradle.properties` file:
+To configure a GitHub token for local development,
+add `name.remal.github-repository-info.api.token` property to your `~/.gradle/gradle.properties` file:
 
 ```properties
 name.remal.github-repository-info.api.token = <your github token here>
