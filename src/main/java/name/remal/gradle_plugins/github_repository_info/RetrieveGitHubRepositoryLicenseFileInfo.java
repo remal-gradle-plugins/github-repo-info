@@ -4,7 +4,7 @@ import name.remal.gradle_plugins.github_repository_info.info.GitHubLicenseConten
 import org.gradle.api.tasks.CacheableTask;
 
 @CacheableTask
-public abstract class RetrieveGitHubRepositoryLicenseContentInfo
+public abstract class RetrieveGitHubRepositoryLicenseFileInfo
     extends AbstractRetrieveGitHubRepositoryInfoTask<GitHubLicenseContent> {
 
     @Override
