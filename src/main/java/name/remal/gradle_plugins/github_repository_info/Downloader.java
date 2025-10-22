@@ -178,7 +178,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
                 } else if (isTextResponse(response)) {
                     var charset = getResponseCharset(response);
                     var content = new String(decompressedContent, charset);
-                    message.append(". Response body:\n").append(content);
+                    message.append(". Response body:\n").append(content).append('\n');
                 } else {
                     message.append(". Binary response body of ").append(decompressedContent.length).append(" bytes.");
                 }
