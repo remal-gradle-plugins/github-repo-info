@@ -166,21 +166,27 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         if (statusCode != 200) {
             var message = new StringBuilder();
             message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
-            message.append(" failed with status code ").append(statusCode);
+            message.append(" failed with status code ").append(statusCode).append('.');
+
+            var remainingRateLimitHeader = "X-RateLimit-Remaining";
+            response.headers().firstValue(remainingRateLimitHeader)
+                .ifPresent(remainingRateLimit ->
+                    message.append(remainingRateLimitHeader).append(": ").append(remainingRateLimit).append('.')
+                );
 
             var responseBody = response.body();
             if (responseBody.length == 0) {
-                message.append(". Response body is empty.");
+                message.append("Response body is empty.");
             } else {
                 var decompressedContent = getPlainResponseBody(response);
                 if (decompressedContent.length > 8192) {
-                    message.append(". Response body of ").append(decompressedContent.length).append(" bytes.");
+                    message.append("Response body of ").append(decompressedContent.length).append(" bytes.");
                 } else if (isTextResponse(response)) {
                     var charset = getResponseCharset(response);
                     var content = new String(decompressedContent, charset);
-                    message.append(". Response body:\n").append(content).append('\n');
+                    message.append("Response body:\n").append(content).append('\n');
                 } else {
-                    message.append(". Binary response body of ").append(decompressedContent.length).append(" bytes.");
+                    message.append("Binary response body of ").append(decompressedContent.length).append(" bytes.");
                 }
             }
 
