@@ -39,7 +39,7 @@ publishing.publications.withType(MavenPublication).configureEach {
 }
 ```
 
-## Loading data by using `githubRepositoryInfo` extension
+## Loading data via `githubRepositoryInfo` extension
 
 This plugin creates `githubRepositoryInfo` extension that provides the following
 [read-only](https://docs.gradle.org/current/javadoc/org/gradle/api/provider/HasConfigurableValue.html#disallowChanges())
@@ -51,6 +51,54 @@ This plugin creates `githubRepositoryInfo` extension that provides the following
 * `githubRepositoryInfo.languages` - provides a map of programming languages used in the repository with their byte size ([example](https://api.github.com/repos/remal-gradle-plugins/github-repository-info/languages))
 
 All these properties load data lazily.
+
+## Loading data via `RetrieveGitHubRepository*Info` tasks
+
+You can register tasks to retrieve GitHub repository information explicitly.
+
+All these tasks emit a JSON file with the retrieved data. This data can be deserialized using the `GitHubJsonDeserializer` class.
+
+```groovy
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryContributorsInfo
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryInfo
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryLanguagesInfo
+import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryLicenseFileInfo
+
+import name.remal.gradle_plugins.github_repository_info.RetrieveGitHubRepositoryContributorsInfo
+import name.remal.gradle_plugins.github_repository_info.RetrieveGitHubRepositoryInfo
+import name.remal.gradle_plugins.github_repository_info.RetrieveGitHubRepositoryLanguagesInfo
+import name.remal.gradle_plugins.github_repository_info.RetrieveGitHubRepositoryLicenseFileInfo
+import name.remal.gradle_plugins.github_repository_info.info.GitHubContributor
+import name.remal.gradle_plugins.github_repository_info.info.GitHubFullRepository
+import name.remal.gradle_plugins.github_repository_info.info.GitHubLicenseContent
+
+def repositoryInfoTask = tasks.register('repositoryInfo', RetrieveGitHubRepositoryInfo) { // provides information about the repository itself
+  outputJsonFile = file('...')
+}
+
+Provider<GitHubFullRepository> repositoryInfo = repositoryInfoTask.flatMap { it.outputJsonFile }.map { deserializerGitHubRepositoryInfo(it) }
+
+
+def repositoryLicenseFileInfoTask = tasks.register('repositoryLicenseFileInfo', RetrieveGitHubRepositoryLicenseFileInfo) { // provides information about the repository license file
+  outputJsonFile = file('...')
+}
+
+Provider<GitHubLicenseContent> repositoryLicenseFileInfo = repositoryLicenseFileInfoTask.flatMap { it.outputJsonFile }.map { deserializerGitHubRepositoryLicenseFileInfo(it) }
+
+
+def repositoryContributorsInfoTask = tasks.register('repositoryContributorsInfo', RetrieveGitHubRepositoryContributorsInfo) { // provides information about the repository contributors
+  outputJsonFile = file('...')
+}
+
+Provider<List<GitHubContributor>> repositoryContributorsInfo = repositoryContributorsInfoTask.flatMap { it.outputJsonFile }.map { deserializerGitHubRepositoryContributorsInfo(it) }
+
+
+def repositoryLanguagesInfoTask = tasks.register('repositoryLanguagesInfo', RetrieveGitHubRepositoryLanguagesInfo) { // provides a map of programming languages used in the repository with their byte size
+  outputJsonFile = file('...')
+}
+
+Provider<Map<String, Integer>> repositoryLanguagesInfo = repositoryLanguagesInfoTask.flatMap { it.outputJsonFile }.map { deserializerGitHubRepositoryLanguagesInfo(it) }
+```
 
 ## Configuration
 
