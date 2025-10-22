@@ -151,6 +151,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
     }
 
     @SneakyThrows
+    @SuppressWarnings("java:S3776")
     private HttpResponse<byte[]> sendRequest(HttpRequest request) {
         final HttpResponse<byte[]> response;
         try {
