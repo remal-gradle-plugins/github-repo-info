@@ -12,6 +12,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.function.Predicate.not;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static lombok.AccessLevel.PUBLIC;
+import static name.remal.gradle_plugins.build_time_constants.api.BuildTimeConstants.getStringProperty;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
 
 import com.google.common.net.MediaType;
@@ -29,6 +30,7 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
@@ -170,8 +172,16 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         var statusCode = response.statusCode();
         if (statusCode != 200) {
             var message = new StringBuilder();
-            message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
-            message.append(" failed with status code ").append(statusCode).append(". ");
+            Supplier<StringBuilder> withNewLineIfNeeded = () -> {
+                if (message.length() > 0) {
+                    message.append('\n');
+                }
+                return message;
+            };
+
+            withNewLineIfNeeded.get()
+                .append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri())
+                .append(" failed with status code ").append(statusCode).append('.');
 
             if (ADD_RATE_LIMIT_HEADERS_TO_ERROR_MESSAGE) {
                 Stream.of(
@@ -181,23 +191,40 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
                 ).forEach(header -> {
                     response.headers().firstValue(header)
                         .filter(not(String::isEmpty))
-                        .ifPresent(value -> message.append(header).append(": ").append(value).append(". "));
+                        .ifPresent(value -> {
+                            withNewLineIfNeeded.get()
+                                .append(header).append(": ").append(value).append('.');
+                        });
                 });
             }
 
+            response.headers().firstValue("X-RateLimit-Remaining")
+                .filter("0"::equals)
+                .ifPresent(__ -> {
+                    withNewLineIfNeeded.get()
+                        .append("Rate limit exceeded, consider setting GitHub REST API key."
+                            + " See the \"Configuration\" section in the documentation for more details: ")
+                        .append(getStringProperty("repository.html-url"))
+                        .append("#configuration .");
+                });
+
             var responseBody = response.body();
             if (responseBody.length == 0) {
-                message.append("Response body is empty.");
+                withNewLineIfNeeded.get()
+                    .append("Response body is empty.");
             } else {
                 var decompressedContent = getPlainResponseBody(response);
                 if (decompressedContent.length > 8192) {
-                    message.append("Response body of ").append(decompressedContent.length).append(" bytes.");
+                    withNewLineIfNeeded.get()
+                        .append("Response body of ").append(decompressedContent.length).append(" bytes.");
                 } else if (isTextResponse(response)) {
                     var charset = getResponseCharset(response);
                     var content = new String(decompressedContent, charset);
-                    message.append("Response body:\n").append(content).append('\n');
+                    withNewLineIfNeeded.get()
+                        .append("Response body:\n").append(content).append('\n');
                 } else {
-                    message.append("Binary response body of ").append(decompressedContent.length).append(" bytes.");
+                    withNewLineIfNeeded.get()
+                        .append("Binary response body of ").append(decompressedContent.length).append(" bytes.");
                 }
             }
 
