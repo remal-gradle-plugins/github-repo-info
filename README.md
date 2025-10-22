@@ -60,6 +60,8 @@ You can register tasks to retrieve GitHub repository information explicitly.
 
 All these tasks emit a JSON file with the retrieved data. This data can be deserialized using the `GitHubJsonDeserializer` class.
 
+These tasks do **not** override the result JSON file, so to an updated result you need to delete the previous result file.
+
 ```groovy
 import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryContributorsInfo
 import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryInfo
