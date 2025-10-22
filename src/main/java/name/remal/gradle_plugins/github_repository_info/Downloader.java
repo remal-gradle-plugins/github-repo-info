@@ -9,6 +9,7 @@ import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static lombok.AccessLevel.PUBLIC;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
 
@@ -24,8 +25,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.Charset;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import javax.inject.Inject;
@@ -119,31 +122,8 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         var request = requestBuilder.build();
 
         var response = sendRequestWithRetries(request);
-
-        var gzipContentOut = new ByteArrayOutputStream();
-        var allContentEncodings = response.headers().allValues(CONTENT_ENCODING);
-        var isGzipEncoding = !allContentEncodings.isEmpty()
-            && allContentEncodings.stream().allMatch("gzip"::equalsIgnoreCase);
-        if (isGzipEncoding) {
-            gzipContentOut.write(response.body());
-        } else {
-            try (var out = new GZIPOutputStream(gzipContentOut)) {
-                out.write(response.body());
-            }
-        }
-        var gzipContent = gzipContentOut.toByteArray();
-
-        var charset = response.headers().firstValue(CONTENT_TYPE)
-            .map(contentType -> {
-                try {
-                    return MediaType.parse(contentType);
-                } catch (Exception ignored) {
-                    return null;
-                }
-            })
-            .flatMap(mediaType -> mediaType.charset().toJavaUtil())
-            .orElse(UTF_8);
-
+        var gzipContent = getGzippedResponseBody(response);
+        var charset = getResponseCharset(response);
         return new CachedContent(gzipContent, charset);
     }
 
@@ -184,23 +164,101 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
 
         var statusCode = response.statusCode();
         if (statusCode != 200) {
-            var message = format(
-                "GitHub REST API request to %s %s failed with status code %s",
-                request.method(),
-                request.uri(),
-                statusCode
-            );
+            var message = new StringBuilder();
+            message.append("GitHub REST API request to").append(request.method()).append(' ').append(request.uri());
+            message.append(" failed with status code ").append(statusCode);
+
+            var responseBody = response.body();
+            if (responseBody.length == 0) {
+                message.append(". Response body is empty.");
+            } else {
+                var decompressedContent = getPlainResponseBody(response);
+                if (decompressedContent.length <= 8192) {
+                    message.append(". Response body of ").append(decompressedContent.length).append(" bytes.");
+                } else if (isTextResponse(response)) {
+                    var charset = getResponseCharset(response);
+                    var content = new String(decompressedContent, charset);
+                    message.append(". Response body:\n").append(content);
+                } else {
+                    message.append(". Binary response body of ").append(decompressedContent.length).append(" bytes.");
+                }
+            }
+
             if (statusCode == 408
                 || statusCode == 429
                 || statusCode >= 500
             ) {
-                throw new GitHubRestApiRequestException.Retryable(message);
+                throw new GitHubRestApiRequestException.Retryable(message.toString());
             } else {
-                throw new GitHubRestApiRequestException.NotRetryable(message);
+                throw new GitHubRestApiRequestException.NotRetryable(message.toString());
             }
         }
 
         return response;
+    }
+
+    @SneakyThrows
+    private static byte[] getGzippedResponseBody(HttpResponse<byte[]> response) {
+        var gzippedOut = new ByteArrayOutputStream();
+        if (isGzipEncodingResponse(response)) {
+            gzippedOut.write(response.body());
+        } else {
+            try (var out = new GZIPOutputStream(gzippedOut)) {
+                out.write(response.body());
+            }
+        }
+        return gzippedOut.toByteArray();
+    }
+
+    @SneakyThrows
+    private static byte[] getPlainResponseBody(HttpResponse<byte[]> response) {
+        var plainOut = new ByteArrayOutputStream();
+        if (isGzipEncodingResponse(response)) {
+            try (var unGzipIn = new GZIPInputStream(new ByteArrayInputStream(response.body()))) {
+                unGzipIn.transferTo(plainOut);
+            }
+        } else {
+            plainOut.write(response.body());
+        }
+        return plainOut.toByteArray();
+    }
+
+    private static boolean isGzipEncodingResponse(HttpResponse<?> response) {
+        var allContentEncodings = response.headers().allValues(CONTENT_ENCODING);
+        return !allContentEncodings.isEmpty()
+            && allContentEncodings.stream().allMatch("gzip"::equalsIgnoreCase);
+    }
+
+    private static final Pattern TEXT_MEDIA_TYPE =
+        Pattern.compile("\\b(?:text|html|json|xml|javascript|css|yaml)\\b", CASE_INSENSITIVE);
+
+    private static boolean isTextResponse(HttpResponse<?> response) {
+        var plainContentType = getContentType(response)
+            .map(MediaType::withoutParameters)
+            .map(MediaType::toString)
+            .orElse(null);
+        if (plainContentType == null) {
+            return false;
+        }
+
+        return TEXT_MEDIA_TYPE.matcher(plainContentType).find();
+    }
+
+    private static Charset getResponseCharset(HttpResponse<?> response) {
+        return getContentType(response)
+            .flatMap(mediaType -> mediaType.charset().toJavaUtil())
+            .orElse(UTF_8);
+    }
+
+    private static Optional<MediaType> getContentType(HttpResponse<?> response) {
+        return response.headers().firstValue(CONTENT_TYPE)
+            .map(contentType -> {
+                try {
+                    return MediaType.parse(contentType);
+                } catch (Exception ignored) {
+                    return null;
+                }
+            });
     }
 
     @Value
