@@ -39,6 +39,8 @@ publishing.publications.withType(MavenPublication).configureEach {
 }
 ```
 
+All the information is loaded lazily and cached during the build.
+
 ## Loading data via `githubRepositoryInfo` extension
 
 This plugin creates `githubRepositoryInfo` extension that provides the following
