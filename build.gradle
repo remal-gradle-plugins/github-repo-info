@@ -51,3 +51,11 @@ gradlePlugin {
         }
     }
 }
+
+tasks.withType(Test).configureEach {
+    ; [
+        'name.remal.github-repository-info.api.token',
+    ].forEach { name ->
+        findProperty(name)?.with { systemProperty(name, it) }
+    }
+}

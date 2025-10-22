@@ -9,6 +9,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.INTEGER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.file.Path;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import name.remal.gradle_plugins.toolkit.testkit.functional.GradleProject;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,17 @@ class GitHubRepositoryInfoPluginFunctionalTest {
                 ext.line("repositoryFullName = 'remal-gradle-plugins/github-repository-info'");
             });
         });
+
+        // TODO: inherit `CI` and `GITHUB_ACTIONS` environment variables
+
+        // TODO: inherit `GITHUB_TOKEN` and `GITHUB_ACTIONS_TOKEN` environment variables instead
+        project.putGradleProperty(
+            "name.remal.github-repository-info.api.token",
+            Optional.ofNullable(System.getenv("GITHUB_TOKEN"))
+                .or(() -> Optional.ofNullable(System.getenv("GITHUB_ACTIONS_TOKEN")))
+                .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api.token")))
+                .orElse(null)
+        );
     }
 
     @Nested

@@ -1,6 +1,5 @@
 package name.remal.gradle_plugins.github_repository_info;
 
-import static name.remal.gradle_plugins.toolkit.ConfigurationCacheSafeSystem.getConfigurationCacheSafeOptionalEnv;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -23,8 +22,9 @@ class DownloaderComponentTest {
     final String githubApiUrl = "https://api.github.com/";
 
     @Nullable
-    final String githubApiToken = Optional.ofNullable(getConfigurationCacheSafeOptionalEnv("GITHUB_TOKEN"))
-        .or(() -> Optional.ofNullable(getConfigurationCacheSafeOptionalEnv("GITHUB_ACTIONS_TOKEN")))
+    final String githubApiToken = Optional.ofNullable(System.getenv("GITHUB_TOKEN"))
+        .or(() -> Optional.ofNullable(System.getenv("GITHUB_ACTIONS_TOKEN")))
+        .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api.token")))
         .orElse(null);
 
     @Test
