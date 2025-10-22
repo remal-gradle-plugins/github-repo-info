@@ -165,7 +165,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         var statusCode = response.statusCode();
         if (statusCode != 200) {
             var message = new StringBuilder();
-            message.append("GitHub REST API request to").append(request.method()).append(' ').append(request.uri());
+            message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
             message.append(" failed with status code ").append(statusCode);
 
             var responseBody = response.body();
@@ -173,7 +173,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
                 message.append(". Response body is empty.");
             } else {
                 var decompressedContent = getPlainResponseBody(response);
-                if (decompressedContent.length <= 8192) {
+                if (decompressedContent.length > 8192) {
                     message.append(". Response body of ").append(decompressedContent.length).append(" bytes.");
                 } else if (isTextResponse(response)) {
                     var charset = getResponseCharset(response);
