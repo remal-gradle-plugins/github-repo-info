@@ -56,17 +56,10 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(1);
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-        .followRedirects(Redirect.NORMAL)
-        .build();
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder().followRedirects(Redirect.NORMAL).build();
 
 
-    public <T> T download(
-        String apiHost,
-        String relativeUrl,
-        @Nullable String apiToken,
-        TypeToken<T> type
-    ) {
+    public <T> T download(String apiHost, String relativeUrl, @Nullable String apiToken, TypeToken<T> type) {
         while (apiHost.endsWith("/")) {
             apiHost = apiHost.substring(0, apiHost.length() - 1);
         }
@@ -90,32 +83,21 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         @Nullable String apiToken,
         Class<T> type
     ) {
-        return download(
-            apiHost,
-            relativeUrl,
-            apiToken,
-            TypeToken.get(type)
-        );
+        return download(apiHost, relativeUrl, apiToken, TypeToken.get(type));
     }
 
     private static final ConcurrentMap<CacheKey, CachedContent> CACHE = new ConcurrentHashMap<>();
 
-    private CachedContent getFromCacheOrDownload(
-        String apiHost,
-        String relativeUrl,
-        @Nullable String apiToken
-    ) {
-        return CACHE.computeIfAbsent(new CacheKey(apiHost, relativeUrl, apiToken), key ->
-            downloadImpl(key.getApiHost(), key.getRelativeUrl(), key.getApiToken())
-        );
+    private CachedContent getFromCacheOrDownload(String apiHost, String relativeUrl, @Nullable String apiToken) {
+        return CACHE.computeIfAbsent(new CacheKey(apiHost, relativeUrl, apiToken),
+            key -> downloadImpl(key.getApiHost(), key.getRelativeUrl(), key.getApiToken()));
     }
 
     @SneakyThrows
-    private CachedContent downloadImpl(
-        String apiHost,
-        String relativeUrl,
-        @Nullable String apiToken
-    ) {
+    private CachedContent downloadImpl(String apiHost, String relativeUrl, @Nullable String apiToken) {
+        if (getConfigurationCacheSafeBooleanEnv("CI")) {
+            throw new AssertionError("expected");
+        }
         if (apiToken == null && isInTestOnCI()) {
             throw new IllegalStateException("GitHub REST API requests must be authenticated when running tests on CI");
         }
@@ -165,14 +147,9 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         try {
             response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofByteArray());
         } catch (IOException e) {
-            throw new GitHubRestApiRequestException.Retryable(
-                format(
-                    "Failed to send request to GitHub REST API: %s %s",
-                    request.method(),
-                    request.uri()
-                ),
-                e
-            );
+            throw new GitHubRestApiRequestException.Retryable(format("Failed to send request to GitHub REST API: %s %s",
+                request.method(),
+                request.uri()), e);
         }
 
         var statusCode = response.statusCode();
@@ -186,63 +163,57 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             };
 
             withNewLineIfNeeded.get()
-                .append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri())
-                .append(" failed with status code ").append(statusCode).append('.');
+                .append("GitHub REST API request ")
+                .append(request.method())
+                .append(' ')
+                .append(request.uri())
+                .append(" failed with status code ")
+                .append(statusCode)
+                .append('.');
 
             if (ADD_RATE_LIMIT_HEADERS_TO_ERROR_MESSAGE) {
-                Stream.of(
-                    "X-RateLimit-Limit",
-                    "X-RateLimit-Used",
-                    "X-RateLimit-Remaining"
-                ).forEach(header -> {
-                    response.headers().firstValue(header)
-                        .filter(not(String::isEmpty))
-                        .ifPresent(value -> {
-                            withNewLineIfNeeded.get()
-                                .append(header).append(": ").append(value).append('.');
-                        });
+                Stream.of("X-RateLimit-Limit", "X-RateLimit-Used", "X-RateLimit-Remaining").forEach(header -> {
+                    response.headers().firstValue(header).filter(not(String::isEmpty)).ifPresent(value -> {
+                        withNewLineIfNeeded.get().append(header).append(": ").append(value).append('.');
+                    });
                 });
             }
 
-            response.headers().firstValue("X-RateLimit-Remaining")
-                .filter("0"::equals)
-                .ifPresent(__ -> {
-                    var isAuthenticated = request.headers().firstValue(AUTHORIZATION).isPresent();
-                    if (!isAuthenticated) {
-                        withNewLineIfNeeded.get()
-                            .append("Rate limit exceeded, consider setting GitHub REST API key,"
-                                + " which is not set right now."
-                                + " See the \"Configuration\" section in the documentation for more details: "
-                            )
-                            .append(getStringProperty("repository.html-url"))
-                            .append("#configuration .");
-                    }
-                });
+            response.headers().firstValue("X-RateLimit-Remaining").filter("0"::equals).ifPresent(__ -> {
+                var isAuthenticated = request.headers().firstValue(AUTHORIZATION).isPresent();
+                if (!isAuthenticated) {
+                    withNewLineIfNeeded.get()
+                        .append("Rate limit exceeded, consider setting GitHub REST API key,"
+                            + " which is not set right now."
+                            + " See the \"Configuration\" section in the documentation for more details: ")
+                        .append(getStringProperty("repository.html-url"))
+                        .append("#configuration .");
+                }
+            });
 
             var responseBody = response.body();
             if (responseBody.length == 0) {
-                withNewLineIfNeeded.get()
-                    .append("Response body is empty.");
+                withNewLineIfNeeded.get().append("Response body is empty.");
             } else {
                 var decompressedContent = getPlainResponseBody(response);
                 if (decompressedContent.length > 8192) {
                     withNewLineIfNeeded.get()
-                        .append("Response body of ").append(decompressedContent.length).append(" bytes.");
+                        .append("Response body of ")
+                        .append(decompressedContent.length)
+                        .append(" bytes.");
                 } else if (isTextResponse(response)) {
                     var charset = getResponseCharset(response);
                     var content = new String(decompressedContent, charset);
-                    withNewLineIfNeeded.get()
-                        .append("Response body:\n").append(content).append('\n');
+                    withNewLineIfNeeded.get().append("Response body:\n").append(content).append('\n');
                 } else {
                     withNewLineIfNeeded.get()
-                        .append("Binary response body of ").append(decompressedContent.length).append(" bytes.");
+                        .append("Binary response body of ")
+                        .append(decompressedContent.length)
+                        .append(" bytes.");
                 }
             }
 
-            if (statusCode == 408
-                || statusCode == 429
-                || statusCode >= 500
-            ) {
+            if (statusCode == 408 || statusCode == 429 || statusCode >= 500) {
                 throw new GitHubRestApiRequestException.Retryable(message.toString());
             } else {
                 throw new GitHubRestApiRequestException.NotRetryable(message.toString());
@@ -280,16 +251,14 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
 
     private static boolean isGzipEncodingResponse(HttpResponse<?> response) {
         var allContentEncodings = response.headers().allValues(CONTENT_ENCODING);
-        return !allContentEncodings.isEmpty()
-            && allContentEncodings.stream().allMatch("gzip"::equalsIgnoreCase);
+        return !allContentEncodings.isEmpty() && allContentEncodings.stream().allMatch("gzip"::equalsIgnoreCase);
     }
 
-    private static final Pattern TEXT_MEDIA_TYPE =
-        Pattern.compile("\\b(?:text|html|json|xml|javascript|css|yaml)\\b", CASE_INSENSITIVE);
+    private static final Pattern TEXT_MEDIA_TYPE = Pattern.compile("\\b(?:text|html|json|xml|javascript|css|yaml)\\b",
+        CASE_INSENSITIVE);
 
     private static boolean isTextResponse(HttpResponse<?> response) {
-        var plainContentType = getContentType(response)
-            .map(MediaType::withoutParameters)
+        var plainContentType = getContentType(response).map(MediaType::withoutParameters)
             .map(MediaType::toString)
             .orElse(null);
         if (plainContentType == null) {
@@ -300,20 +269,17 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
     }
 
     private static Charset getResponseCharset(HttpResponse<?> response) {
-        return getContentType(response)
-            .flatMap(mediaType -> mediaType.charset().toJavaUtil())
-            .orElse(UTF_8);
+        return getContentType(response).flatMap(mediaType -> mediaType.charset().toJavaUtil()).orElse(UTF_8);
     }
 
     private static Optional<MediaType> getContentType(HttpResponse<?> response) {
-        return response.headers().firstValue(CONTENT_TYPE)
-            .map(contentType -> {
-                try {
-                    return MediaType.parse(contentType);
-                } catch (Exception ignored) {
-                    return null;
-                }
-            });
+        return response.headers().firstValue(CONTENT_TYPE).map(contentType -> {
+            try {
+                return MediaType.parse(contentType);
+            } catch (Exception ignored) {
+                return null;
+            }
+        });
     }
 
     @Value
@@ -344,8 +310,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             return false;
         }
 
-        return getConfigurationCacheSafeBooleanEnv("CI")
-            || getConfigurationCacheSafeBooleanEnv("GITHUB_ACTIONS");
+        return getConfigurationCacheSafeBooleanEnv("CI") || getConfigurationCacheSafeBooleanEnv("GITHUB_ACTIONS");
     }
 
 }
