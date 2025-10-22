@@ -25,7 +25,7 @@ class DownloaderComponentTest {
     @Nullable
     final String githubApiToken = Optional.ofNullable(getConfigurationCacheSafeOptionalEnv("GITHUB_TOKEN"))
         .or(() -> Optional.ofNullable(getConfigurationCacheSafeOptionalEnv("GITHUB_ACTIONS_TOKEN")))
-        .orElseThrow();
+        .orElse(null);
 
     @Test
     void repository() {

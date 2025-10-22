@@ -28,7 +28,6 @@ class GitHubRepositoryInfoPluginFunctionalTest {
             build.block("githubRepositoryInfo", ext -> {
                 ext.line("githubApiUrl = 'https://api.github.com'");
                 ext.line("repositoryFullName = 'remal-gradle-plugins/github-repository-info'");
-                ext.line("githubApiToken = ''");
             });
         });
     }

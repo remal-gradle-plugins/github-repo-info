@@ -48,6 +48,8 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
     private static final int MAX_ATTEMPTS = 5;
     private static final Duration BASE_TIMEOUT_BETWEEN_ATTEMPTS = Duration.ofSeconds(1);
 
+    private static final boolean ADD_RATE_LIMIT_HEADERS_TO_ERROR_MESSAGE = false;
+
     private static final Duration REQUEST_TIMEOUT = Duration.ofMinutes(1);
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -170,15 +172,17 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
             message.append(" failed with status code ").append(statusCode).append('.');
 
-            Stream.of(
-                "X-RateLimit-Limit",
-                "X-RateLimit-Used",
-                "X-RateLimit-Remaining"
-            ).forEach(header -> {
-                response.headers().firstValue(header)
-                    .filter(not(String::isEmpty))
-                    .ifPresent(value -> message.append(header).append(": ").append(value).append('.'));
-            });
+            if (ADD_RATE_LIMIT_HEADERS_TO_ERROR_MESSAGE) {
+                Stream.of(
+                    "X-RateLimit-Limit",
+                    "X-RateLimit-Used",
+                    "X-RateLimit-Remaining"
+                ).forEach(header -> {
+                    response.headers().firstValue(header)
+                        .filter(not(String::isEmpty))
+                        .ifPresent(value -> message.append(header).append(": ").append(value).append('.'));
+                });
+            }
 
             var responseBody = response.body();
             if (responseBody.length == 0) {
