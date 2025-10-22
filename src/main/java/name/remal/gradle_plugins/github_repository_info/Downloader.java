@@ -171,7 +171,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         if (statusCode != 200) {
             var message = new StringBuilder();
             message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
-            message.append(" failed with status code ").append(statusCode).append('.');
+            message.append(" failed with status code ").append(statusCode).append(". ");
 
             if (ADD_RATE_LIMIT_HEADERS_TO_ERROR_MESSAGE) {
                 Stream.of(
@@ -181,7 +181,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
                 ).forEach(header -> {
                     response.headers().firstValue(header)
                         .filter(not(String::isEmpty))
-                        .ifPresent(value -> message.append(header).append(": ").append(value).append('.'));
+                        .ifPresent(value -> message.append(header).append(": ").append(value).append(". "));
                 });
             }
 
