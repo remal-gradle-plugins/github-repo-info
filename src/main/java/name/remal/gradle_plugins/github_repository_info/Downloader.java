@@ -14,6 +14,8 @@ import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static lombok.AccessLevel.PUBLIC;
 import static name.remal.gradle_plugins.build_time_constants.api.BuildTimeConstants.getStringProperty;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
+import static name.remal.gradle_plugins.toolkit.CiUtils.isRunningOnCi;
+import static name.remal.gradle_plugins.toolkit.InTestFlags.isInTest;
 
 import com.google.common.net.MediaType;
 import com.google.gson.reflect.TypeToken;
@@ -114,6 +116,10 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         String relativeUrl,
         @Nullable String apiToken
     ) {
+        if (apiToken == null && isInTest() && isRunningOnCi()) {
+            throw new IllegalStateException("GitHub REST API requests must be authenticated when running tests on CI");
+        }
+
         var requestUri = URI.create(apiHost + '/' + relativeUrl);
         var requestBuilder = HttpRequest.newBuilder()
             .GET()
@@ -201,11 +207,16 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             response.headers().firstValue("X-RateLimit-Remaining")
                 .filter("0"::equals)
                 .ifPresent(__ -> {
-                    withNewLineIfNeeded.get()
-                        .append("Rate limit exceeded, consider setting GitHub REST API key."
-                            + " See the \"Configuration\" section in the documentation for more details: ")
-                        .append(getStringProperty("repository.html-url"))
-                        .append("#configuration .");
+                    var isAuthenticated = request.headers().firstValue(AUTHORIZATION).isPresent();
+                    if (!isAuthenticated) {
+                        withNewLineIfNeeded.get()
+                            .append("Rate limit exceeded, consider setting GitHub REST API key,"
+                                + " which is not set right now."
+                                + " See the \"Configuration\" section in the documentation for more details: "
+                            )
+                            .append(getStringProperty("repository.html-url"))
+                            .append("#configuration .");
+                    }
                 });
 
             var responseBody = response.body();

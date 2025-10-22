@@ -16,8 +16,6 @@ buildscript {
     }
 }
 
-tasks.matching { it instanceof AbstractTestTask }.configureEach { outputs.upToDateWhen { false } }
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 allprojects {
