@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @RequiredArgsConstructor
+@SuppressWarnings("java:S5778")
 class GitHubRepositoryInfoPluginTest {
 
     final Project project;
