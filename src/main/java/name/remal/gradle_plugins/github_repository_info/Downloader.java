@@ -14,7 +14,7 @@ import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static lombok.AccessLevel.PUBLIC;
 import static name.remal.gradle_plugins.build_time_constants.api.BuildTimeConstants.getStringProperty;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
-import static name.remal.gradle_plugins.toolkit.CiUtils.isRunningOnCi;
+import static name.remal.gradle_plugins.toolkit.ConfigurationCacheSafeSystem.getConfigurationCacheSafeBooleanEnv;
 import static name.remal.gradle_plugins.toolkit.InTestFlags.isInTest;
 
 import com.google.common.net.MediaType;
@@ -116,7 +116,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
         String relativeUrl,
         @Nullable String apiToken
     ) {
-        if (apiToken == null && isInTest() && isRunningOnCi()) {
+        if (apiToken == null && isInTestOnCI()) {
             throw new IllegalStateException("GitHub REST API requests must be authenticated when running tests on CI");
         }
 
@@ -337,6 +337,15 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             }
             return outBytes.toString(charset);
         }
+    }
+
+    private static boolean isInTestOnCI() {
+        if (!isInTest()) {
+            return false;
+        }
+
+        return getConfigurationCacheSafeBooleanEnv("CI")
+            || getConfigurationCacheSafeBooleanEnv("GITHUB_ACTIONS");
     }
 
 }
