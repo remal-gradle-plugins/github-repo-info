@@ -9,6 +9,7 @@ import static com.google.common.net.HttpHeaders.CONTENT_TYPE;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static java.util.function.Predicate.not;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static lombok.AccessLevel.PUBLIC;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
@@ -29,6 +30,7 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import javax.inject.Inject;
@@ -168,11 +170,15 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             message.append("GitHub REST API request ").append(request.method()).append(' ').append(request.uri());
             message.append(" failed with status code ").append(statusCode).append('.');
 
-            var remainingRateLimitHeader = "X-RateLimit-Remaining";
-            response.headers().firstValue(remainingRateLimitHeader)
-                .ifPresent(remainingRateLimit ->
-                    message.append(remainingRateLimitHeader).append(": ").append(remainingRateLimit).append('.')
-                );
+            Stream.of(
+                "X-RateLimit-Limit",
+                "X-RateLimit-Used",
+                "X-RateLimit-Remaining"
+            ).forEach(header -> {
+                response.headers().firstValue(header)
+                    .filter(not(String::isEmpty))
+                    .ifPresent(value -> message.append(header).append(": ").append(value).append('.'));
+            });
 
             var responseBody = response.body();
             if (responseBody.length == 0) {
