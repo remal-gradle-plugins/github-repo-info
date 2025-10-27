@@ -30,7 +30,7 @@ publishing.publications.withType(MavenPublication).configureEach {
     licenses {
       license {
         name = githubRepositoryInfo.licenseFile.map { it.license.name }
-        url = githubRepositoryInfo.licenseFile.map { it.url }
+        url = githubRepositoryInfo.licenseFile.map { it.htmlUrl }
       }
     }
   }
