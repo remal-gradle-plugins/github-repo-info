@@ -39,6 +39,9 @@ import org.gradle.api.tasks.Internal;
 public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryInfoSettings {
 
     @Internal
+    protected abstract Property<Downloader> getDownloader();
+
+    @Internal
     public abstract Property<GitHubFullRepository> getRepository();
 
     {
@@ -104,14 +107,16 @@ public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryI
 
 
     @Internal
-    protected abstract Property<Downloader> getDownloader();
+    public abstract DirectoryProperty getRepositoryRootDir();
 
+    @Internal
+    public abstract Property<String> getGithubServerUrl();
 
     {
         getGithubApiUrl().convention(
             getProviders().environmentVariable("GITHUB_API_URL")
                 .orElse(getGitRemoteHost().map(host -> "https://api." + host))
-                .orElse(getProviders().gradleProperty("name.remal.github-repository-info.api.url"))
+                .orElse(getProviders().gradleProperty("name.remal.github-repository-info.api-url"))
                 .orElse("https://api.github.com")
         );
         getRepositoryFullName().convention(
@@ -122,12 +127,17 @@ public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryI
         getGithubApiToken().convention(
             getProviders().provider(() -> getConfigurationCacheSafeOptionalEnv("GITHUB_TOKEN"))
                 .orElse(getProviders().provider(() -> getConfigurationCacheSafeOptionalEnv("GITHUB_ACTIONS_TOKEN")))
+                .orElse(getProviders().gradleProperty("name.remal.github-repository-info.api-token"))
                 .orElse(getProviders().gradleProperty("name.remal.github-repository-info.api.token"))
+        );
+        getGithubServerUrl().convention(
+            getProviders().environmentVariable("GITHUB_SERVER_URL")
+                .orElse(getGitRemoteHost().map(host -> "https://" + host))
+                .orElse(getProviders().gradleProperty("name.remal.github-repository-info.server-url"))
+                .orElse("https://github.com")
         );
     }
 
-    @Internal
-    public abstract DirectoryProperty getRepositoryRootDir();
 
     @Internal
     protected abstract Property<String> getGitRemoteHost();

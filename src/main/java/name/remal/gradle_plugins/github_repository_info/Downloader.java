@@ -129,7 +129,7 @@ abstract class Downloader implements BuildService<BuildServiceParameters.None> {
             .setHeader(ACCEPT_ENCODING, "gzip")
             .timeout(REQUEST_TIMEOUT);
         if (apiToken != null) {
-            requestBuilder.header(AUTHORIZATION, "Bearer " + apiToken);
+            requestBuilder.header(AUTHORIZATION, "token " + apiToken);
         }
         var request = requestBuilder.build();
 

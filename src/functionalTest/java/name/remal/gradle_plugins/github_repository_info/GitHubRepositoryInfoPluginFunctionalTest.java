@@ -36,10 +36,10 @@ class GitHubRepositoryInfoPluginFunctionalTest {
 
         // TODO: inherit `GITHUB_TOKEN` and `GITHUB_ACTIONS_TOKEN` environment variables instead
         project.putGradleProperty(
-            "name.remal.github-repository-info.api.token",
+            "name.remal.github-repository-info.api-token",
             Optional.ofNullable(System.getenv("GITHUB_TOKEN"))
                 .or(() -> Optional.ofNullable(System.getenv("GITHUB_ACTIONS_TOKEN")))
-                .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api.token")))
+                .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api-token")))
                 .orElse(null)
         );
     }

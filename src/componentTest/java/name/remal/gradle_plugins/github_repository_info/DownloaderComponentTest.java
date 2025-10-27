@@ -24,7 +24,7 @@ class DownloaderComponentTest {
     @Nullable
     final String githubApiToken = Optional.ofNullable(System.getenv("GITHUB_TOKEN"))
         .or(() -> Optional.ofNullable(System.getenv("GITHUB_ACTIONS_TOKEN")))
-        .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api.token")))
+        .or(() -> Optional.ofNullable(System.getProperty("name.remal.github-repository-info.api-token")))
         .orElse(null);
 
     @Test

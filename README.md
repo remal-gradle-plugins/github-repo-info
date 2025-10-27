@@ -7,11 +7,13 @@
 [![configuration cache: supported](https://img.shields.io/static/v1?label=configuration%20cache&message=supported&color=success)](https://docs.gradle.org/current/userguide/configuration_cache.html)
 
 <!--plugin-usage:name.remal.github-repository-info-->
+
 ```groovy
 plugins {
-    id 'name.remal.github-repository-info' version '1.0.0-rc-1'
+  id 'name.remal.github-repository-info' version '1.0.0-rc-1'
 }
 ```
+
 <!--/plugin-usage-->
 
 &nbsp;
@@ -39,7 +41,7 @@ publishing.publications.withType(MavenPublication).configureEach {
 
 All the information is loaded lazily and cached during the build.
 
-## Loading data via `githubRepositoryInfo` extension
+## `githubRepositoryInfo` extension
 
 This plugin creates `githubRepositoryInfo` extension that provides the following
 [read-only](https://docs.gradle.org/current/javadoc/org/gradle/api/provider/HasConfigurableValue.html#disallowChanges())
@@ -51,6 +53,16 @@ This plugin creates `githubRepositoryInfo` extension that provides the following
 * `githubRepositoryInfo.languages` - provides a map of programming languages used in the repository with their byte size ([example](https://api.github.com/repos/remal-gradle-plugins/github-repository-info/languages))
 
 All these properties load data lazily.
+
+Also, you can get or configure general GitHub connection settings via the following `Property<String>` properties.
+These properties are automatically configured from GitHub Actions environment variables or remote URL in the `.git/config` file.
+
+* `githubRepositoryInfo.githubApiUrl` - GitHub API URL (default: `https://api.github.com`).
+* `githubRepositoryInfo.repositoryFullName` - repository full name (e.g., `owner/repo`).
+* `githubRepositoryInfo.githubApiToken` - GitHub API authentication token.
+  See the [Configuration](#configuration) section.
+* `githubRepositoryInfo.githubServerUrl` - GitHub URL (default: `https://github.com`).
+  Not used by this plugin directly, but can be useful for constructing links.
 
 ## Loading data via `RetrieveGitHubRepository*Info` tasks
 
@@ -121,10 +133,10 @@ set `GITHUB_TOKEN` environment variable for your GitHub Actions job:
 `GITHUB_ACTIONS_TOKEN` environment variable can be used instead of `GITHUB_TOKEN`.
 
 To configure a GitHub token for local development,
-add `name.remal.github-repository-info.api.token` property to your `~/.gradle/gradle.properties` file:
+add `name.remal.github-repository-info.api-token` property to your `~/.gradle/gradle.properties` file:
 
 ```properties
-name.remal.github-repository-info.api.token = <your github token here>
+name.remal.github-repository-info.api-token = <your github token here>
 ```
 
 This file is in [the Gradle User Home directory](https://docs.gradle.org/current/userguide/directory_layout.html#dir:gradle_user_home),
