@@ -7,13 +7,11 @@
 [![configuration cache: supported](https://img.shields.io/static/v1?label=configuration%20cache&message=supported&color=success)](https://docs.gradle.org/current/userguide/configuration_cache.html)
 
 <!--plugin-usage:name.remal.github-repository-info-->
-
 ```groovy
 plugins {
-  id 'name.remal.github-repository-info' version '1.0.0-rc-1'
+    id 'name.remal.github-repository-info' version '1.0.0-rc-1'
 }
 ```
-
 <!--/plugin-usage-->
 
 &nbsp;
