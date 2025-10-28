@@ -51,7 +51,7 @@ This plugin creates `githubRepositoryInfo` extension that provides the following
 * `githubRepositoryInfo.languages` - provides a map of programming languages used in the repository with their byte size ([example](https://api.github.com/repos/remal-gradle-plugins/github-repository-info/languages))
 
 All these properties load data lazily
-and cache the result in `./build/name.remal.github-repository-info/cache` directory.
+and **cache the result** in `./build/tmp/.cache/name.remal.github-repository-info` directory.
 To get updated data, you need to delete this cache directory.
 
 Also, you can get or configure general GitHub connection settings via the following `Property<String>` properties.
