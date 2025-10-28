@@ -11,16 +11,10 @@ import static org.eclipse.jgit.lib.Constants.DOT_GIT;
 import static org.eclipse.jgit.lib.Constants.DOT_GIT_EXT;
 import static org.eclipse.jgit.transport.RemoteConfig.getAllRemoteConfigs;
 
-import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.nio.file.NoSuchFileException;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 import javax.inject.Inject;
-import name.remal.gradle_plugins.github_repository_info.info.GitHubContributor;
-import name.remal.gradle_plugins.github_repository_info.info.GitHubFullRepository;
-import name.remal.gradle_plugins.github_repository_info.info.GitHubLicenseContent;
 import name.remal.gradle_plugins.toolkit.ObjectUtils;
 import org.eclipse.jgit.lib.Config;
 import org.eclipse.jgit.transport.RemoteConfig;
@@ -28,82 +22,15 @@ import org.eclipse.jgit.transport.URIish;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.model.ObjectFactory;
-import org.gradle.api.provider.HasConfigurableValue;
-import org.gradle.api.provider.ListProperty;
-import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.ProviderFactory;
 import org.gradle.api.tasks.Internal;
+import org.gradle.initialization.BuildCancellationToken;
 
-@SuppressWarnings("ClassEscapesDefinedScope")
-public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryInfoSettings {
-
-    @Internal
-    protected abstract Property<Downloader> getDownloader();
+abstract class GitHubRepositoryInfoExtensionBase implements GitHubRepositoryInfoSettings {
 
     @Internal
-    public abstract Property<GitHubFullRepository> getRepository();
-
-    {
-        makePropertyLazyReadOnly(
-            getRepository().value(getProviders().provider(() ->
-                getDownloader().get().download(
-                    getGithubApiUrl().get(),
-                    "/repos/" + getRepositoryFullName().get(),
-                    getGithubApiToken().getOrNull(),
-                    new TypeToken<>() { }
-                )
-            ))
-        );
-    }
-
-    @Internal
-    public abstract Property<GitHubLicenseContent> getLicenseFile();
-
-    {
-        makePropertyLazyReadOnly(
-            getLicenseFile().value(getProviders().provider(() ->
-                getDownloader().get().download(
-                    getGithubApiUrl().get(),
-                    "/repos/" + getRepositoryFullName().get() + "/license",
-                    getGithubApiToken().getOrNull(),
-                    new TypeToken<>() { }
-                )
-            ))
-        );
-    }
-
-    @Internal
-    public abstract ListProperty<GitHubContributor> getContributors();
-
-    {
-        makePropertyLazyReadOnly(
-            getContributors().value(getProviders().provider(() ->
-                getDownloader().get().download(
-                    getGithubApiUrl().get(),
-                    "/repos/" + getRepositoryFullName().get() + "/contributors",
-                    getGithubApiToken().getOrNull(),
-                    new TypeToken<List<GitHubContributor>>() { }
-                )
-            ))
-        );
-    }
-
-    @Internal
-    public abstract MapProperty<String, Integer> getLanguages();
-
-    {
-        makePropertyLazyReadOnly(
-            getLanguages().value(getProviders().provider(() ->
-                getDownloader().get().download(
-                    getGithubApiUrl().get(),
-                    "/repos/" + getRepositoryFullName().get() + "/languages",
-                    getGithubApiToken().getOrNull(),
-                    new TypeToken<Map<String, Integer>>() { }
-                )
-            ))
-        );
-    }
+    protected abstract Property<GitHubDataFetcher> getGitHubDataFetcher();
 
 
     @Internal
@@ -208,10 +135,7 @@ public abstract class GitHubRepositoryInfoExtension implements GitHubRepositoryI
     @Inject
     protected abstract ObjectFactory getObjects();
 
-
-    private static void makePropertyLazyReadOnly(HasConfigurableValue property) {
-        property.disallowChanges();
-        property.finalizeValueOnRead();
-    }
+    @Inject
+    protected abstract BuildCancellationToken getCancellationToken();
 
 }

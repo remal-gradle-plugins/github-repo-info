@@ -52,6 +52,132 @@ gradlePlugin {
     }
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+@groovy.transform.Immutable(copyWith = true)
+class GitHubRestApiEndpointInfo {
+    String type
+    String importClass
+    String name
+}
+
+generateSources.forMainSourceSet.java { task ->
+    Map<String, GitHubRestApiEndpointInfo> endpoints = [
+        '/repos/{repository-full-name}': new GitHubRestApiEndpointInfo(
+            name: 'repository',
+            type: 'GitHubFullRepository',
+            importClass: 'name.remal.gradle_plugins.github_repository_info.info.GitHubFullRepository',
+        ),
+        '/repos/{repository-full-name}/license': new GitHubRestApiEndpointInfo(
+            name: 'licenseFile',
+            type: 'GitHubLicenseContent',
+            importClass: 'name.remal.gradle_plugins.github_repository_info.info.GitHubLicenseContent',
+        ),
+        '/repos/{repository-full-name}/contributors': new GitHubRestApiEndpointInfo(
+            name: 'contributors',
+            type: 'List<GitHubContributor>',
+            importClass: 'name.remal.gradle_plugins.github_repository_info.info.GitHubContributor',
+        ),
+        '/repos/{repository-full-name}/languages': new GitHubRestApiEndpointInfo(
+            name: 'languages',
+            type: 'Map<String, Integer>',
+        ),
+    ]
+
+    classFile(project.calculateBaseJavaPackage(), "GitHubRepositoryInfoExtension") {
+        addStaticImport('name.remal.gradle_plugins.github_repository_info.HasConfigurableValueUtils', 'makePropertyLazyReadOnly')
+
+        addImport('org.jspecify.annotations.NullMarked')
+        addImport('org.gradle.api.tasks.Internal')
+        addImport('com.google.gson.reflect.TypeToken')
+        addImport('java.util.List')
+        addImport('java.util.Map')
+
+        line("@NullMarked")
+        suppressWarningsLine("checkstyle:LineLength")
+        block("public abstract class ${simpleName} extends GitHubRepositoryInfoExtensionBase") {
+            endpoints.forEach { relativeUrlTemplate, endpointInfo ->
+                if (endpointInfo.importClass) {
+                    addImport(endpointInfo.importClass)
+                }
+
+                String propertyType = "Property<${endpointInfo.type}>"
+                if (propertyType.startsWith('Property<List<')) {
+                    propertyType = propertyType.replaceFirst(/^Property<List<([^>]+)>>$/, 'ListProperty<$1>')
+                    addImport(ListProperty)
+                    addImport(List)
+                } else if (propertyType.startsWith('Property<Map<')) {
+                    propertyType = propertyType.replaceFirst(/^Property<Map<([^>]+)>>$/, 'MapProperty<$1>')
+                    addImport(MapProperty)
+                    addImport(Map)
+                } else {
+                    addImport(Property)
+                }
+                line()
+                line("@Internal")
+                line("public abstract ${propertyType} get${endpointInfo.name.capitalize()}();")
+
+                line()
+                block {
+                    line("makePropertyLazyReadOnly(")
+                    indent {
+                        line("get${endpointInfo.name.capitalize()}().value(getProviders().provider(() ->")
+                        indent {
+                            line("getGitHubDataFetcher().get().fetch(")
+                            indent {
+                                line("getGithubApiUrl().get(),")
+                                line("\"${relativeUrlTemplate.replace('{repository-full-name}', '" + getRepositoryFullName().get() + "')}\"".replaceAll(/(^""\s*\+\s*)|(\s*\+\s*""$)/, '') + ",")
+                                line("getGithubApiToken().getOrNull(),")
+                                line("new TypeToken<${endpointInfo.type}>() { },")
+                                line("getCancellationToken()")
+                            }
+                            line(")")
+                        }
+                        line("))")
+                    }
+                    line(");")
+                }
+
+                line()
+            }
+        }
+    }
+
+    endpoints.forEach { relativeUrlTemplate, endpointInfo ->
+        String taskSimpleName = endpointInfo.name
+        if (!taskSimpleName.startsWith('repository')) {
+            taskSimpleName = "repository${taskSimpleName.capitalize()}"
+        }
+        taskSimpleName = "RetrieveGitHub${taskSimpleName.capitalize()}Info"
+        classFile(project.calculateBaseJavaPackage(), taskSimpleName) {
+            addImport(CacheableTask)
+            addImport('org.jspecify.annotations.NullMarked')
+
+            if (endpointInfo.importClass) {
+                addImport(endpointInfo.importClass)
+            }
+
+            if (endpointInfo.type.startsWith('List<')) {
+                addImport(List)
+            } else if (endpointInfo.type.startsWith('Map<')) {
+                addImport(Map)
+            }
+
+            line("@CacheableTask")
+            line("@NullMarked")
+            suppressWarningsLine("checkstyle:LineLength")
+            block("public abstract class ${simpleName} extends AbstractRetrieveGitHubRepositoryInfoTask<${endpointInfo.type}>") {
+                line("@Override")
+                block("protected String createRelativeUrl()") {
+                    line("return \"${relativeUrlTemplate.replace('{repository-full-name}', '" + getRepositoryFullName().get() + "')}\"".replaceAll(/(^""\s*\+\s*)|(\s*\+\s*""$)/, '') + ";")
+                }
+            }
+        }
+    }
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
 tasks.withType(Test).configureEach {
     ; [
         'name.remal.github-repository-info.api-token',

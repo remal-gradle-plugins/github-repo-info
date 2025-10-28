@@ -11,6 +11,7 @@ import java.util.Optional;
 import name.remal.gradle_plugins.toolkit.CiSystem;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.services.BuildService;
 
 public abstract class GitHubRepositoryInfoPlugin implements Plugin<Project> {
 
@@ -19,6 +20,13 @@ public abstract class GitHubRepositoryInfoPlugin implements Plugin<Project> {
     @Override
     @SuppressWarnings("unchecked")
     public void apply(Project project) {
+        var dataFetcher = project.getGradle().getSharedServices().registerIfAbsent(
+            getBuildServiceName(GitHubDataFetcher.class),
+            GitHubDataFetcher.class,
+            __ -> { }
+        );
+        dataFetcher.get().registerProject(project);
+
         var extension = project.getExtensions().create(
             GITHUB_REPOSITORY_INFO_EXTENSION_NAME,
             GitHubRepositoryInfoExtension.class
@@ -32,28 +40,26 @@ public abstract class GitHubRepositoryInfoPlugin implements Plugin<Project> {
             }
             return findGitRepositoryRootFor(project.getRootDir());
         })).finalizeValueOnRead();
-
-        var downloader = project.getGradle().getSharedServices().registerIfAbsent(
-            join(
-                "|",
-                Downloader.class.getName(),
-                String.valueOf(identityHashCode(Downloader.class)),
-                Optional.ofNullable(Downloader.class.getClassLoader())
-                    .map(System::identityHashCode)
-                    .map(Object::toString)
-                    .orElse("")
-            ),
-            Downloader.class,
-            __ -> { }
-        );
-        extension.getDownloader().set(downloader);
+        extension.getGitHubDataFetcher().value(dataFetcher).finalizeValueOnRead();
 
         project.getTasks().withType(AbstractRetrieveGitHubRepositoryInfoTask.class).configureEach(task -> {
             copyManagedProperties(GitHubRepositoryInfoSettings.class, extension, task);
 
-            task.getDownloader().set(downloader);
-            task.usesService(downloader);
+            task.getGitHubDataFetcher().set(dataFetcher);
+            task.usesService(dataFetcher);
         });
+    }
+
+    private static String getBuildServiceName(Class<? extends BuildService<?>> serviceClass) {
+        return join(
+            "|",
+            serviceClass.getName(),
+            String.valueOf(identityHashCode(serviceClass)),
+            Optional.ofNullable(serviceClass.getClassLoader())
+                .map(System::identityHashCode)
+                .map(Object::toString)
+                .orElse("")
+        );
     }
 
 }

@@ -2,6 +2,7 @@ package name.remal.gradle_plugins.github_repository_info;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.newBufferedWriter;
+import static lombok.AccessLevel.PRIVATE;
 import static name.remal.gradle_plugins.github_repository_info.JsonUtils.GSON;
 import static name.remal.gradle_plugins.toolkit.PathUtils.createParentDirectories;
 import static name.remal.gradle_plugins.toolkit.PathUtils.deleteRecursively;
@@ -11,14 +12,18 @@ import com.google.errorprone.annotations.ForOverride;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.ParameterizedType;
 import javax.inject.Inject;
+import lombok.Getter;
 import name.remal.gradle_plugins.github_repository_info.info.GitHubInfoType;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.provider.ProviderFactory;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.initialization.BuildCancellationToken;
 
 abstract class AbstractRetrieveGitHubRepositoryInfoTask<InfoType>
     extends DefaultTask
@@ -27,6 +32,7 @@ abstract class AbstractRetrieveGitHubRepositoryInfoTask<InfoType>
     @ForOverride
     protected abstract String createRelativeUrl();
 
+    @Getter(value = PRIVATE, onMethod_ = {@Internal})
     private final TypeToken<InfoType> infoType;
 
     @SuppressWarnings({"unchecked"})
@@ -47,30 +53,58 @@ abstract class AbstractRetrieveGitHubRepositoryInfoTask<InfoType>
     }
 
 
+    @Input
+    protected abstract Property<String> getRelativeUrl();
+
+    {
+        getRelativeUrl().value(getProviders().provider(
+            this::createRelativeUrl
+        )).finalizeValueOnRead();
+    }
+
+    @OutputFile
+    @org.gradle.api.tasks.Optional
+    protected abstract RegularFileProperty getCacheFile();
+
+    {
+        getCacheFile().value(
+            getLayout().getBuildDirectory().file(getProviders().provider(() -> {
+                getGitHubDataFetcher().finalizeValueOnRead();
+                getGithubApiUrl().finalizeValueOnRead();
+                getRelativeUrl().finalizeValueOnRead();
+
+                var cacheFile = getGitHubDataFetcher().get()
+                    .getCacheFile(getGithubApiUrl().get(), getRelativeUrl().get());
+                return cacheFile != null ? cacheFile.toString() : null;
+            }))
+        ).finalizeValueOnRead();
+    }
+
     @OutputFile
     public abstract RegularFileProperty getOutputJsonFile();
 
     {
         getOutputJsonFile().convention(
-            getLayout().getBuildDirectory().file(getName() + "/output.json")
+            getCacheFile()
+                .orElse(getLayout().getBuildDirectory().file(getName() + "/output.json"))
         );
     }
 
 
     @Internal
-    protected abstract Property<Downloader> getDownloader();
-
+    protected abstract Property<GitHubDataFetcher> getGitHubDataFetcher();
 
     @TaskAction
     public final void execute() throws Throwable {
         var outputPath = normalizePath(getOutputJsonFile().get().getAsFile().toPath());
         deleteRecursively(outputPath);
 
-        var result = getDownloader().get().download(
+        var result = getGitHubDataFetcher().get().fetch(
             getGithubApiUrl().get(),
-            createRelativeUrl(),
+            getRelativeUrl().get(),
             getGithubApiToken().getOrNull(),
-            infoType
+            infoType,
+            getCancellationToken()
         );
 
         createParentDirectories(outputPath);
@@ -81,6 +115,12 @@ abstract class AbstractRetrieveGitHubRepositoryInfoTask<InfoType>
 
 
     @Inject
+    protected abstract ProviderFactory getProviders();
+
+    @Inject
     protected abstract ProjectLayout getLayout();
+
+    @Inject
+    protected abstract BuildCancellationToken getCancellationToken();
 
 }

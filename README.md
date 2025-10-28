@@ -50,7 +50,9 @@ This plugin creates `githubRepositoryInfo` extension that provides the following
 * `githubRepositoryInfo.contributors` - provides a list of repository contributors ([example](https://api.github.com/repos/remal-gradle-plugins/github-repository-info/contributors))
 * `githubRepositoryInfo.languages` - provides a map of programming languages used in the repository with their byte size ([example](https://api.github.com/repos/remal-gradle-plugins/github-repository-info/languages))
 
-All these properties load data lazily.
+All these properties load data lazily
+and cache the result in `./build/name.remal.github-repository-info/cache` directory.
+To get updated data, you need to delete this cache directory.
 
 Also, you can get or configure general GitHub connection settings via the following `Property<String>` properties.
 These properties are automatically configured from GitHub Actions environment variables or remote URL in the `.git/config` file.
@@ -62,13 +64,14 @@ These properties are automatically configured from GitHub Actions environment va
 * `githubRepositoryInfo.githubServerUrl` - GitHub URL (default: `https://github.com`).
   Not used by this plugin directly, but can be useful for constructing links.
 
+<!--
 ## Loading data via `RetrieveGitHubRepository*Info` tasks
 
 You can register tasks to retrieve GitHub repository information explicitly.
 
 All these tasks emit a JSON file with the retrieved data. This data can be deserialized using the `GitHubJsonDeserializer` class.
 
-These tasks do **not** override the result JSON file, so to an updated result you need to delete the previous result file.
+These tasks do **not** override the result JSON file, so to get an updated result, you need to delete the previous result file.
 
 ```groovy
 import static name.remal.gradle_plugins.github_repository_info.GitHubJsonDeserializer.deserializerGitHubRepositoryContributorsInfo
@@ -111,6 +114,7 @@ def repositoryLanguagesInfoTask = tasks.register('repositoryLanguagesInfo', Retr
 
 Provider<Map<String, Integer>> repositoryLanguagesInfo = repositoryLanguagesInfoTask.flatMap { it.outputJsonFile }.map { deserializerGitHubRepositoryLanguagesInfo(it) }
 ```
+-->
 
 ## Configuration
 

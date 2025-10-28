@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import name.remal.gradle_plugins.github_repository_info.info.GitHubContributor;
 import name.remal.gradle_plugins.github_repository_info.info.GitHubFullRepository;
@@ -47,10 +49,10 @@ class GitHubRepositoryInfoPluginTest {
             extension.getLicenseFile().set(mock(GitHubLicenseContent.class))
         );
         assertThrows(IllegalStateException.class, () ->
-            extension.getContributors().add(mock(GitHubContributor.class))
+            extension.getContributors().set(List.of(mock(GitHubContributor.class)))
         );
         assertThrows(IllegalStateException.class, () ->
-            extension.getLanguages().put("C++", 0)
+            extension.getLanguages().set(Map.of("C++", 0))
         );
     }
 
