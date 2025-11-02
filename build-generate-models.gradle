@@ -4,7 +4,6 @@ import static com.google.common.base.CaseFormat.UPPER_CAMEL
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import groovy.json.JsonSlurper
 import java.time.Instant
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -23,17 +22,16 @@ class ThisScriptLocation {}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-File dependenciesFile = file('.renovate/package.json')
+File restApiDescriptionsPropertiesFile = file('github-rest-api-description.properties')
 
 generateSources.forMainSourceSet.java { task ->
     task.inputs.dir(getClassLocationFile(ThisScriptLocation)).withNormalizer(ClasspathNormalizer).optional()
 
     Property<String> githubRestApiDescriptionSha = objects.property(String).value(provider {
-        Object dependencies = new JsonSlurper().parse(dependenciesFile, 'UTF-8')
-        String githubRestApiDescriptionDependency = dependencies?.dependencies?['github-rest-api-description']
-        assert githubRestApiDescriptionDependency != null
-        String sha = githubRestApiDescriptionDependency.replaceFirst(/^.*#/, '')
-        assert sha.matches(/^[\da-f]+$/)
+        Properties properties = new Properties()
+        restApiDescriptionsPropertiesFile.newInputStream().withCloseable { properties.load(it) }
+        String sha = properties.getProperty('github-rest-api-description.sha')
+        assert sha != null && sha.matches(/^[\da-f]+$/)
         return sha
     }).with { it.finalizeValueOnRead(); it }
 
