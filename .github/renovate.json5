@@ -3,5 +3,11 @@
   extends: ["github>remal-gradle-plugins/plugins-renovate-config:base"],
 
   // $$$sync-with-template-modifiable: local $$$
+  packageRules: [
+    {
+      matchPackageNames: ["https://github.com/github/rest-api-description"],
+      schedule: ["* 15-23 * * 6"],
+    },
+  ],
   // $$$sync-with-template-modifiable-end$$$
 }
